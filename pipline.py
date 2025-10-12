@@ -8,6 +8,8 @@
 # *** Response from this pipeline sometimes reflects a lot differently from the cli_chat from the official demo. whether it's some wrong in pipeline(generation_config/upload of latest message/any else) or just the model's fault is not very clear. 
 # but we confirm that the conversation supports multi-rounds talks 
 
+
+
 # -*- coding: utf-8 -*-
 import json
 import argparse
@@ -46,36 +48,14 @@ class pipeline:
                  pcfg:PipelineConfig,
                  tokenizer,
                  vl_processor,
-                 vl_gpt):
+                 vl_gpt,
+                 generation_config):
         self.pcfg = pcfg
         self.model_path = pcfg.model_path
         self.tokenizer, self.vl_processor, self.vl_gpt = tokenizer, vl_processor, vl_gpt
-        self.gen_config = self.load_gen_config()
+        self.gen_config = generation_config
 
         
-        
-    def load_gen_config(self):
-        config = dict(
-            pad_token_id=self.vl_processor.tokenizer.eos_token_id,
-            bos_token_id=self.vl_processor.tokenizer.bos_token_id,
-            eos_token_id=self.vl_processor.tokenizer.eos_token_id,
-            max_new_tokens=self.pcfg.max_gen_len,
-            use_cache=True,
-        )
-        if self.pcfg.temperature > 0:
-            config.update(
-                {
-                    "do_sample": True,
-                    "top_p": self.pcfg.top_p,
-                    "temperature": self.pcfg.temperature,
-                    # 重复惩罚
-                    "repetition_penalty": self.pcfg.repetition_penalty,
-                } # type: ignore
-            )
-        else:
-            config.update({"do_sample": False})
-            
-        return config
     
     
     # load input to get response
@@ -106,13 +86,13 @@ class pipeline:
             tokenizer=self.tokenizer, skip_prompt=True, skip_special_tokens=True
         )
         
-        gen_cfg = self.gen_config.copy()
-        gen_cfg["inputs_embeds"] = inputs_embeds
-        gen_cfg["attention_mask"] = prepare_inputs.attention_mask
-        gen_cfg["streamer"] = streamer
+        
+        self.gen_config["inputs_embeds"] = inputs_embeds
+        self.gen_config["attention_mask"] = prepare_inputs.attention_mask
+        self.gen_config["streamer"] = streamer
             
         thread = Thread(target=self.vl_gpt.language_model.generate,
-                            kwargs=gen_cfg)
+                            kwargs=self.gen_config)
         thread.start()
         
         answer = ""
@@ -155,6 +135,7 @@ class Conversations:
         if name not in self.conversations:
             raise NameError("no such conversation")
         self.cur_conv = self.conversations[name]
+        torch.cuda.empty_cache()
         print(f"conversation switched into {name}")
         
     def cur_conv_name(self):
@@ -191,10 +172,33 @@ if __name__ == "__main__":
         max_gen_len=args.max_gen_len,
         repetition_penalty=args.repetition_penalty
     )
+    
+    generation_config = dict(
+        pad_token_id=vl_processor.tokenizer.eos_token_id,
+        bos_token_id=vl_processor.tokenizer.bos_token_id,
+        eos_token_id=vl_processor.tokenizer.eos_token_id,
+        max_new_tokens=args.max_gen_len,
+        use_cache=True,
+    )
+    if args.temperature > 0:
+        generation_config.update(
+            {
+                "do_sample": True,
+                "top_p": args.top_p,
+                "temperature": args.temperature,
+                # 重复惩罚
+                "repetition_penalty": args.repetition_penalty,
+            }
+        )
+    else:
+        generation_config.update({"do_sample": False})
+    
+    
     Pipeline = pipeline(cfg,
                         tokenizer=tokenizer,
                         vl_processor=vl_processor,
-                        vl_gpt=vl_gpt)
+                        vl_gpt=vl_gpt,
+                        generation_config=generation_config)
     
     convs = Conversations(vl_processor)
     
