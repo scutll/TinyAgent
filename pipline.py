@@ -4,6 +4,10 @@
 # tokenizer, processor, gpt using load_pretrained_model to load
 # for multi-conversations we employ interfaces to add/delete or switch into dirrerent conversations
 
+
+# *** Response from this pipeline sometimes reflects a lot differently from the cli_chat from the official demo. whether it's some wrong in pipeline(generation_config/upload of latest message/any else) or just the model's fault is not very clear. 
+# but we confirm that the conversation supports multi-rounds talks 
+
 # -*- coding: utf-8 -*-
 import json
 import argparse
@@ -16,6 +20,7 @@ import torch
 from PIL import Image
 from transformers import TextIteratorStreamer
 from deepseek_vl.utils.io import load_pretrained_model
+
 
 
 
@@ -33,25 +38,27 @@ class PipelineConfig:
     repetition_penalty: float = 1.1
     max_gen_len: int = 1024
     device: str = "cuda"
+    
 
 
 class pipeline:
     def __init__(self,
-                 pcfg:PipelineConfig):
+                 pcfg:PipelineConfig,
+                 tokenizer,
+                 vl_processor,
+                 vl_gpt):
         self.pcfg = pcfg
         self.model_path = pcfg.model_path
-        self.tokenizer, self.vl_processor, self.vl_gpt = load_pretrained_model(model_path=self.model_path)
-        self.conversations = dict()
-        self.gen_config = self.load_gen_config(self.tokenizer, self.vl_processor)
-        self.cur_conv = self.vl_processor.new_chat_template()
-        self.conversations["default"] = self.cur_conv
+        self.tokenizer, self.vl_processor, self.vl_gpt = tokenizer, vl_processor, vl_gpt
+        self.gen_config = self.load_gen_config()
+
         
         
-    def load_gen_config(self, tokenizer, vl_processor):
+    def load_gen_config(self):
         config = dict(
-            pad_token_id=vl_processor.tokenizer.eos_token_id,
-            bos_token_id=vl_processor.tokenizer.bos_token_id,
-            eos_token_id=vl_processor.tokenizer.eos_token_id,
+            pad_token_id=self.vl_processor.tokenizer.eos_token_id,
+            bos_token_id=self.vl_processor.tokenizer.bos_token_id,
+            eos_token_id=self.vl_processor.tokenizer.eos_token_id,
             max_new_tokens=self.pcfg.max_gen_len,
             use_cache=True,
         )
@@ -73,9 +80,7 @@ class pipeline:
     
     # load input to get response
     @torch.inference_mode()
-    def __call__(self,userInput: str, images=None, model_path="model/deepseek-1.3b/snapshots/model"):
-        
-        conv = self.cur_conv
+    def __call__(self,userInput: str, images, conv, model_path="model/deepseek-1.3b/snapshots/model"):
     
         if images is None:
             images = []
@@ -117,7 +122,16 @@ class pipeline:
             yield char
         conv.update_last_message(answer)
        
-    # Management of conversations 
+
+
+# Management of conversations 
+class Conversations:
+    def __init__(self, vl_processor):
+        self.conversations = dict() 
+        self.vl_processor = vl_processor  
+        self.conversations["default"] = self.vl_processor.new_chat_template()
+        self.cur_conv = self.conversations["default"]
+
     def create_conversation(self, name=None):
         if name is None:
             name = len(self.conversations)
@@ -143,12 +157,11 @@ class pipeline:
         self.cur_conv = self.conversations[name]
         print(f"conversation switched into {name}")
         
-    def current_conversation(self):
+    def cur_conv_name(self):
         for k, v in self.conversations.items():
-            if v is self.cur_conv:
+            if self.cur_conv is v:
                 return k
-        raise RuntimeError("fatal: cannot locate current conversation in conversations")
-
+        
 
 
 # =============test======================
@@ -166,6 +179,9 @@ if __name__ == "__main__":
     parser.add_argument("--max_gen_len", type=int, default=1024)
     args = parser.parse_args()
     
+    tokenizer, vl_processor, vl_gpt = load_pretrained_model(model_path=args.model_path)
+    
+    
 #  ==================test=======================
     answer = ""
     cfg = PipelineConfig(
@@ -175,12 +191,19 @@ if __name__ == "__main__":
         max_gen_len=args.max_gen_len,
         repetition_penalty=args.repetition_penalty
     )
-    Pipeline = pipeline(cfg)
-    Pipeline.create_conversation("chat1")
-    Pipeline.switch_conversation("chat1")
+    Pipeline = pipeline(cfg,
+                        tokenizer=tokenizer,
+                        vl_processor=vl_processor,
+                        vl_gpt=vl_gpt)
     
-    answer_iter = Pipeline("帮我写一个计算斐波那契数列前10项 的python代码，直接给出代码，不要有任何一句多余的话")
-    sys.stdout.write(f"({Pipeline.current_conversation()})Model: ")
+    convs = Conversations(vl_processor)
+    
+    
+    convs.create_conversation("chat1")
+    convs.switch_conversation("chat1")
+    
+    answer_iter = Pipeline("给我讲讲模型蒸馏的原理", images=None, conv=convs.cur_conv)
+    sys.stdout.write(f"({convs.cur_conv_name()})Model: ")
     for char in answer_iter:
         answer += char
         sys.stdout.write(char)
@@ -189,8 +212,8 @@ if __name__ == "__main__":
     sys.stdout.write("\n")
     sys.stdout.flush()
 
-    answer_iter = Pipeline("如果用C#写呢")
-    sys.stdout.write(f"({Pipeline.current_conversation()})Model: ")
+    answer_iter = Pipeline("模型蒸馏为什么可以降低参数量", images=None, conv=convs.cur_conv)
+    sys.stdout.write(f"({convs.cur_conv_name()})Model: ")
     for char in answer_iter:
         answer += char
         sys.stdout.write(char)
@@ -199,3 +222,13 @@ if __name__ == "__main__":
     sys.stdout.write("\n")
     sys.stdout.flush()
     
+    
+    answer_iter = Pipeline("为什么推理性能又不会降低很多", images=None, conv=convs.cur_conv)
+    sys.stdout.write(f"({convs.cur_conv_name()})Model: ")
+    for char in answer_iter:
+        answer += char
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        
+    sys.stdout.write("\n")
+    sys.stdout.flush()
