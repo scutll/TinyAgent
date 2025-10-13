@@ -417,3 +417,4 @@ tags
 # Persistent undo
 [._]*.un~
 
+test_tool.py

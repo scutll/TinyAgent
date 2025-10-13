@@ -16,34 +16,26 @@ import argparse
 import os
 import sys
 from threading import Thread
-
-from dataclasses import dataclass
 import torch
 from PIL import Image
 from transformers import TextIteratorStreamer
 from deepseek_vl.utils.io import load_pretrained_model
-
-
-
+from Configuration.Pipeline_config import PipelineConfig 
+from convsManagement import Conversations
 
 # open an image and convert it into RGB form
 def load_image(image_file):
     image = Image.open(image_file).convert("RGB")
     return image
 
-# to config the pipeline
-@dataclass
-class PipelineConfig:
-    model_path: str = "model/deepseek-1.3b/snapshots/model"
-    temperature: float = 0.2
-    top_p: float = 0.95
-    repetition_penalty: float = 1.1
-    max_gen_len: int = 1024
-    device: str = "cuda"
+
     
 
 
 class pipeline:
+    '''
+    the pipeline that gets input, conversation(str) and returns response, updating the conversation\n
+    '''
     def __init__(self,
                  pcfg:PipelineConfig,
                  tokenizer,
@@ -56,12 +48,13 @@ class pipeline:
         self.gen_config = generation_config
 
         
-    
-    
+            
     # load input to get response
     @torch.inference_mode()
-    def __call__(self,userInput: str, images, conv, model_path="model/deepseek-1.3b/snapshots/model"):
-    
+    def __call__(self,userInput: str, images, conv):
+        '''
+        receives an string of userInput and images(not available yet) and conversation from Conversations(manager)
+        '''
         if images is None:
             images = []
   
@@ -104,45 +97,6 @@ class pipeline:
        
 
 
-# Management of conversations 
-class Conversations:
-    def __init__(self, vl_processor):
-        self.conversations = dict() 
-        self.vl_processor = vl_processor  
-        self.conversations["default"] = self.vl_processor.new_chat_template()
-        self.cur_conv = self.conversations["default"]
-
-    def create_conversation(self, name=None):
-        if name is None:
-            name = len(self.conversations)
-        if name in self.conversations:
-            raise NameError(f"conversation {name} exists already!")
-        conv = self.vl_processor.new_chat_template()
-        self.conversations[name] = conv
-        
-        print(f"conversation {name} created")
-        return name
-    
-    def list_conversations(self):
-        return list(self.conversations.keys())
-    
-    def delete_conversation(self, name):
-        if name not in self.conversations:
-            raise NameError("no such conversation")
-        del self.conversations[name]
-    
-    def switch_conversation(self, name):
-        if name not in self.conversations:
-            raise NameError("no such conversation")
-        self.cur_conv = self.conversations[name]
-        torch.cuda.empty_cache()
-        print(f"conversation switched into {name}")
-        
-    def cur_conv_name(self):
-        for k, v in self.conversations.items():
-            if self.cur_conv is v:
-                return k
-        
 
 
 # =============test======================
@@ -167,10 +121,6 @@ if __name__ == "__main__":
     answer = ""
     cfg = PipelineConfig(
         model_path=args.model_path,
-        temperature=args.temperature,
-        top_p=args.top_p,
-        max_gen_len=args.max_gen_len,
-        repetition_penalty=args.repetition_penalty
     )
     
     generation_config = dict(
