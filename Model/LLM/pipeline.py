@@ -20,30 +20,22 @@ import torch
 from PIL import Image
 from transformers import TextIteratorStreamer
 from deepseek_vl.utils.io import load_pretrained_model
-from Configuration.Pipeline_config import PipelineConfig 
-from convsManagement import Conversations
+from Model.LLM.convsManagement import Conversations
 
 # open an image and convert it into RGB form
 def load_image(image_file):
     image = Image.open(image_file).convert("RGB")
     return image
 
-
-    
-
-
 class pipeline:
     '''
     the pipeline that gets input, conversation(str) and returns response, updating the conversation\n
     '''
     def __init__(self,
-                 pcfg:PipelineConfig,
                  tokenizer,
                  vl_processor,
                  vl_gpt,
                  generation_config):
-        self.pcfg = pcfg
-        self.model_path = pcfg.model_path
         self.tokenizer, self.vl_processor, self.vl_gpt = tokenizer, vl_processor, vl_gpt
         self.gen_config = generation_config
 
@@ -119,10 +111,6 @@ if __name__ == "__main__":
     
 #  ==================test=======================
     answer = ""
-    cfg = PipelineConfig(
-        model_path=args.model_path,
-    )
-    
     generation_config = dict(
         pad_token_id=vl_processor.tokenizer.eos_token_id,
         bos_token_id=vl_processor.tokenizer.bos_token_id,
@@ -144,8 +132,7 @@ if __name__ == "__main__":
         generation_config.update({"do_sample": False})
     
     
-    Pipeline = pipeline(cfg,
-                        tokenizer=tokenizer,
+    Pipeline = pipeline(tokenizer=tokenizer,
                         vl_processor=vl_processor,
                         vl_gpt=vl_gpt,
                         generation_config=generation_config)
