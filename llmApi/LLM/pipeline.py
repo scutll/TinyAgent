@@ -20,7 +20,7 @@ import torch
 from PIL import Image
 from transformers import TextIteratorStreamer
 from deepseek_vl.utils.io import load_pretrained_model
-from Model.LLM.convsManagement import Conversations
+from .convsManagement import Conversations
 
 # open an image and convert it into RGB form
 def load_image(image_file):
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_path",
         type=str,
-        default="model/deepseek-1.3b/snapshots/model",
+        default="Model/model/deepseek-7b/model",
         help="the huggingface model name or the local path of the downloaded huggingface model.",
     )
     parser.add_argument("--temperature", type=float, default=0.2)

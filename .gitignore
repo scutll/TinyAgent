@@ -1,6 +1,6 @@
 ##### Python.gitignore #####
 # model
-Model/model
+llmApi/model
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

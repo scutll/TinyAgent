@@ -1,15 +1,19 @@
 # the api to receive input and generate response, returning in stream
+import os
+import sys
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(ROOT_DIR)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
-from Model.LLM.pipeline import pipeline
-from Model.LLM.convsManagement import Conversations
+from llmApi.LLM.pipeline import pipeline
+from llmApi.LLM.convsManagement import Conversations
 from deepseek_vl.utils.io import load_pretrained_model
 import json
 
 
-# deploy the model
-tokenizer, vl_processor, vl_gpt = load_pretrained_model("Model/model/deepseek-7b/model")
+# deploy the model ==============================================================
+tokenizer, vl_processor, vl_gpt = load_pretrained_model("llmApi/model/deepseek-7b/model")
 
 Convs = Conversations(vl_processor=vl_processor)
 
@@ -44,9 +48,10 @@ LLM = pipeline(tokenizer=tokenizer,
 
 Convs.create_conversation("chat1")
 Convs.switch_conversation("chat1")
+# =================================================================================
 
 
-
+# the api
 
 app = FastAPI()
 @app.post("/agent/llm")
