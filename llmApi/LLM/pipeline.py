@@ -46,6 +46,8 @@ class pipeline:
     def __call__(self,userInput: str, images, conv):
         '''
         receives an string of userInput and images(not available yet) and conversation from Conversations(manager)
+        if image is not Nont, it uses deepseek-vl-7b model
+        if image is None, it uses deepseek-llm-7b model
         '''
         if images is None:
             images = []
