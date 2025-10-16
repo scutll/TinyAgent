@@ -1,6 +1,6 @@
 # TinyAgent : a small agent to help you do something
 
-Api 启动方式:
+(使用本地模型时)Api 启动方式:
 
 - 部署模型和api:
 
@@ -24,3 +24,7 @@ cloudflared tunnel --url http://localhost:5200
 
 然后在apifox上将这个作为根地址就行了(注意：需要用raw data的json格式发送请求)
 
+(当前为了方便和调试prompt还有本地小模型思考能力太弱等原因)暂时使用的是Deepseek的LLM api, 使用之前要先在agent_core那里贴上API_Key
+当前阶段已经能查看项目并生成代码，但还是有一些很致命的问题：
+- Agent有时候会因为JSON无法解析而崩溃,猜测应该是应为prompt描述不够充分原因，ai没有严格按照应有的格式进行输出，导致parse_response函数崩溃(这个函数设计的不够完善也是一方面-_-)
+- 然后是模型的思考路径很短，不知道会不会对实际的代码生成有什么影响-_-, 感觉是prompt给的例子里面本身就很少，感觉如果项目代码比较复杂的话LLM的思考方式可能会出现理解不到位 ~__~
