@@ -23,16 +23,15 @@ client = OpenAI(
     api_key="sk-e601ccf83e2b414a82f301d4d0b7042b",
     base_url="https://api.deepseek.com"
 )
-def get_response_from_dsApi(input, conversation):
+def get_response_from_dsApi(input: str, conversation):
+    conversation.append({"role":"user", "content": input})
     response = client.chat.completions.create(
         model="deepseek-chat",
-        messages=[
-            conversation,
-            {"role":"user", "content": input},
-        ],
-        stream=False
+        messages=conversation,
+        stream=False,
     )
     result = response.choices[0].message.content
+    conversation.append({"role":"assistant", "content": result})
     return result if result is not None else "Failed to generate response!"
 
 conversation = []
@@ -41,10 +40,22 @@ conversation.append({"role": "system", "content": system_prompt})
 
 
 
-from tools.Tools import call_func
+from tools.Tools import ToolsContainer
 from request.api import *
 from utils.parser import parse_response
+import tools.File_tools as ft
+import tools.System_tools as st
+tools = ToolsContainer()
 
+tools.load_tool(ft.search_replace)
+tools.load_tool(ft.create_file)
+tools.load_tool(ft.read_file)
+tools.load_tool(st.list_file)
+tools.load_tool(st.tree_file)
+tools.load_tool(st.get_absolute_cur_path)
+tools.load_tool(st.change_dir)
+tools.load_tool(st.delete_dir)
+tools.load_tool(st.delete_file)
 
 
 
@@ -62,8 +73,8 @@ class AgentCore:
         # self.cur_conv = new_conversation()
         # response = get_response(self.task, self.cur_conv)
         
-        conversation.append({"role":"user", "content": self.task})
         response = get_response_from_dsApi(self.task, conversation)
+
         
         think, text, func_call, func_args = parse_response(response)
         print("my think: ", think)
@@ -71,10 +82,19 @@ class AgentCore:
         print("-------------------------------------------")
         
         while True:
-            observation =  call_func(func_call, func_args)
+            # print(f"calling {func_call} with {func_args}:\n y to confirm")
+            # while input() != 'y':
+            #     continue
+
+            print("calling tools: ")
+            # call_func还没有搞定，也就是管理tools的工具，在Tools.py实现
+            observation =  tools.call_func(func_call, func_args)
 
             # response = get_response(observation, self.cur_conv)
+            
+            # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             response = get_response_from_dsApi(observation, conversation)
+
             think, text, func_call, func_args = parse_response(response)
             print("my think: ", think)
             print("===========================================\ndeepseek: ", text)
