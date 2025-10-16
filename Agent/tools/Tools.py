@@ -27,8 +27,8 @@ class ToolsContainer:
         """
         # 检查工具是否存在
         if func_call not in self.tools:
-            error_msg = f"Tool not found: {func_call}. Available tools: {list(self.tools.keys())}"
-            self.logger.error(error_msg)
+            error_msg = f"Tool not found: {func_call}."
+            # self.logger.error(error_msg)
             return error_msg
         
         func = self.tools[func_call]
@@ -39,7 +39,7 @@ class ToolsContainer:
             self.logger.error(error_msg)
             return error_msg
         
-        self.logger.info(f"Calling tool: {func_call} with args: {func_args}")
+        self.logger.info(f"Calling tool: {func_call}")
         
         try:
             # 调用工具函数

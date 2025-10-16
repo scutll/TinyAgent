@@ -73,6 +73,7 @@ class AgentCore:
         # self.cur_conv = new_conversation()
         # response = get_response(self.task, self.cur_conv)
         
+        print("Model reasoning: ")
         response = get_response_from_dsApi(self.task, conversation)
 
         
@@ -86,13 +87,13 @@ class AgentCore:
             # while input() != 'y':
             #     continue
 
-            print("calling tools: ")
             # call_func还没有搞定，也就是管理tools的工具，在Tools.py实现
             observation =  tools.call_func(func_call, func_args)
 
             # response = get_response(observation, self.cur_conv)
             
             # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
+            print("Model reasoning: ")
             response = get_response_from_dsApi(observation, conversation)
 
             think, text, func_call, func_args = parse_response(response)
