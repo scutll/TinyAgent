@@ -44,7 +44,7 @@ class ToolsContainer:
             self.logger.error(error_msg)
             return error_msg
         
-        self.logger.info(f"Calling tool: {func_call}")
+        self.logger.info(f"Calling tool: {func_call}\n")
         
         try:
             # 调用工具函数
@@ -53,16 +53,16 @@ class ToolsContainer:
             return result
         except TypeError as e:
             # 参数类型错误
-            error_msg = f"Parameter error in {func_call}: {str(e)}"
+            error_msg = f"Parameter error in {func_call}: {str(e)}\n"
             self.logger.error(error_msg)
             return error_msg
         except KeyError as e:
             # 参数键错误
-            error_msg = f"Missing parameter in {func_call}: {str(e)}"
+            error_msg = f"Missing parameter in {func_call}: {str(e)}\n"
             self.logger.error(error_msg)
             return error_msg
         except Exception as e:
             # 其他异常
-            error_msg = f"Failed to run {func_call} with {func_args}: {str(e)}"
+            error_msg = f"Failed to run {func_call} with {func_args}: {str(e)}\n"
             self.logger.error(error_msg)
             return error_msg

@@ -36,7 +36,7 @@ tree_file
   "parameters": {
     "properties": {
       "path": {
-        "description": "要展示的目录路径。可以是相对路径或绝对路径。默认值为 \".\"（当前工作目录）。",
+        "description": "要展示的目录路径。可以是相对路径或绝对路径。默认值为 .（当前工作目录）。",
         "type": "string"
       },
       "prefix": {

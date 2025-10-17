@@ -1,8 +1,8 @@
 import json
 import httpx
 from openai import OpenAI
-from utils.logging import log
-from Memory.Container import MemoryContainer
+from Agent.utils.logging import log
+from Agent.Memory.Container import MemoryContainer
 
 
 def get_response(*args, **kwargs):
@@ -38,6 +38,6 @@ def get_response_from_dsApi(input: str, Memory: MemoryContainer):
     )
     result = response.choices[0].message.content
     Memory._add_assistant_message(str(result))
-    log(result if result is not None else "Fail to generate response")
+    log("(deepseek): " + result if result is not None else "Fail to generate response")
     log("======================================")
     return result if result is not None else "Failed to generate response!"

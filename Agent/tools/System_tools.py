@@ -41,7 +41,7 @@ def list_file(params: str = ""):
             
         return '\n'.join(result_lines)
 
-def tree_file(path='.',prefix = ''):
+def tree_file(path='.', prefix = ''):
     '''
     tree_file: show files recursively in a tree \n
     args : None \n

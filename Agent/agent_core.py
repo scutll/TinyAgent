@@ -3,19 +3,19 @@
 # the agent_core is deployed in user's system, and the Model deployed in the server. agent_core uploads input and gets reply streamly from server
 
 import os
-from request.api import get_response_from_dsApi
-from prompts.prompt_react import prompt_react
-from prompts.tools_prompt import tools_prompt
+from Agent.request.api import get_response_from_dsApi
+from Agent.prompts.prompt_react import prompt_react
+from Agent.prompts.tools_prompt import tools_prompt
 
 # 创建日志目录和文件
 os.makedirs("logs", exist_ok=True)
 
-from tools.Tools import ToolsContainer
-from Memory.Container import MemoryContainer
-from request.api import *
-from utils.parser import parse_response
-import tools.File_tools as ft
-import tools.System_tools as st
+from Agent.tools.Tools import ToolsContainer
+from Agent.Memory.Container import MemoryContainer
+from Agent.request.api import *
+from Agent.utils.parser import parse_response
+import Agent.tools.File_tools as ft
+import Agent.tools.System_tools as st
 
 
 # 初始化conversation(Memory)
