@@ -38,7 +38,6 @@ def get_response_from_dsApi(input: str, conversation):
 conversation = []
 # system_prompt = read_file("E:\D2L\Agent\TinyAgent\llmApi\Prompts\prompt_react.md")
 system_prompt = prompt_react + tools_prompt
-print(system_prompt)
 conversation.append({"role": "system", "content": system_prompt})
 
 
@@ -84,6 +83,8 @@ class AgentCore:
         print('-' * 27, "\nmy think: ", think)
         print('-' * 27, "\ndeepseek: ", text)
         print('-' * 27)
+        if func_call == "Finish":
+            return
         
         while True:
             # print(f"calling {func_call} with {func_args}:\n y to confirm")

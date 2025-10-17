@@ -419,3 +419,4 @@ tags
 
 test_tool.py
 Agent/agent_test.py
+logs/*

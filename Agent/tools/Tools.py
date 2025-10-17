@@ -8,6 +8,8 @@ class ToolsContainer:
         # 设置基础日志
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
+        
+        logging.getLogger("httpx").setLevel(logging.WARNING)
     
     def load_tool(self, tool):
         """加载工具函数到容器中"""
@@ -44,7 +46,7 @@ class ToolsContainer:
         try:
             # 调用工具函数
             result = func(**func_args)
-            self.logger.info(f"Tool {func_call} executed successfully")
+            # self.logger.info(f"Tool {func_call} executed successfully")
             return result
         except TypeError as e:
             # 参数类型错误
