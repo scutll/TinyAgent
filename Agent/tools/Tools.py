@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union, List
 
 class ToolsContainer:
     def __init__(self):
@@ -13,8 +13,11 @@ class ToolsContainer:
     
     def load_tool(self, tool):
         """加载工具函数到容器中"""
-        self.tools[tool.__name__] = tool
-        self.logger.info(f"Tool loaded: {tool.__name__}")
+        if not isinstance(tool, List):
+            tool = [tool]
+        for tl in tool:
+            self.tools[tl.__name__] = tool
+            self.logger.info(f"Tool loaded: {tl.__name__}")
     
     def call_func(self, func_call: str, func_args: Dict[str, Any]) -> Any:
         """

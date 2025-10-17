@@ -1,0 +1,2 @@
+class promptHandler:
+    pass

@@ -3,62 +3,38 @@
 # the agent_core is deployed in user's system, and the Model deployed in the server. agent_core uploads input and gets reply streamly from server
 
 import os
-from openai import OpenAI
+from request.api import get_response_from_dsApi
 from prompts.prompt_react import prompt_react
 from prompts.tools_prompt import tools_prompt
 
 # 创建日志目录和文件
 os.makedirs("logs", exist_ok=True)
-log_file_path = f"logs/agent_run_log.txt"
-log_file = open(log_file_path, 'w', encoding='utf-8')
-print(f"日志文件: {log_file_path}")
-
 def log(message):
     """写入日志"""
-    log_file.write(message + '\n')
-    log_file.flush()
-
-client = OpenAI(
-    api_key="sk-e601ccf83e2b414a82f301d4d0b7042b",
-    base_url="https://api.deepseek.com"
-)
-def get_response_from_dsApi(input: str, conversation):
-    conversation.append({"role":"user", "content": input})
-    response = client.chat.completions.create(
-        model="deepseek-chat",
-        messages=conversation,
-        stream=False,
-    )
-    result = response.choices[0].message.content
-    conversation.append({"role":"assistant", "content": result})
-    log(result if result is not None else "Fail to generate response")
-    log("======================================")
-    return result if result is not None else "Failed to generate response!"
-
-conversation = []
-# system_prompt = read_file("E:\D2L\Agent\TinyAgent\llmApi\Prompts\prompt_react.md")
-system_prompt = prompt_react + tools_prompt
-conversation.append({"role": "system", "content": system_prompt})
-
+    log_file_path = f"logs/agent_run_log.txt"
+    with open(log_file_path, "w", encoding='utf-8') as f:
+        f.write(message + '\n')
+        f.flush()
 
 
 from tools.Tools import ToolsContainer
+from Memory.Container import MemoryContainer
 from request.api import *
 from utils.parser import parse_response
 import tools.File_tools as ft
 import tools.System_tools as st
+
+
+# 初始化conversation(Memory)
+system_prompt = prompt_react + tools_prompt
+Memory = MemoryContainer()
+Memory._add_prompt(system_prompt)
+
+
+
+# 导入工具
 tools = ToolsContainer()
-
-tools.load_tool(ft.search_replace)
-tools.load_tool(ft.create_file)
-tools.load_tool(ft.read_file)
-tools.load_tool(st.list_file)
-tools.load_tool(st.tree_file)
-tools.load_tool(st.get_absolute_cur_path)
-tools.load_tool(st.change_dir)
-tools.load_tool(st.delete_dir)
-tools.load_tool(st.delete_file)
-
+Tools = [ft.search_replace, ft.create_file, ft.read_file, st.list_file, st.tree_file, st.get_absolute_cur_path, st.change_dir, st.delete_dir, st.delete_file]
 
 
 class AgentCore:
@@ -76,7 +52,7 @@ class AgentCore:
         # response = get_response(self.task, self.cur_conv)
         
         print("Model reasoning: ")
-        response = get_response_from_dsApi(self.task, conversation)
+        response = get_response_from_dsApi(self.task, Memory)
 
         
         think, text, func_call, func_args = parse_response(response)
@@ -101,7 +77,7 @@ class AgentCore:
             
             # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             print("Model reasoning: ")
-            response = get_response_from_dsApi(observation, conversation)
+            response = get_response_from_dsApi(observation, Memory)
 
             think, text, func_call, func_args = parse_response(response)
             
