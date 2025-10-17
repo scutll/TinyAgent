@@ -4,20 +4,19 @@
 
 import os
 from openai import OpenAI
+from prompts.prompt_react import prompt_react
+from prompts.tools_prompt import tools_prompt
 
+# 创建日志目录和文件
+os.makedirs("logs", exist_ok=True)
+log_file_path = f"logs/agent_run_log.txt"
+log_file = open(log_file_path, 'w', encoding='utf-8')
+print(f"日志文件: {log_file_path}")
 
-def read_file(path:str):
-    """Read a text file and return its content.
-
-    On error returns a string starting with "error in reading <path>: <error>".
-    """
-    try:
-        with open(path, "r", encoding='utf-8') as f:
-            content = f.read()
-    except Exception as e:
-        content = f"error in reading {path}: {e}"
-    return content
-
+def log(message):
+    """写入日志"""
+    log_file.write(message + '\n')
+    log_file.flush()
 
 client = OpenAI(
     api_key="sk-e601ccf83e2b414a82f301d4d0b7042b",
@@ -32,10 +31,14 @@ def get_response_from_dsApi(input: str, conversation):
     )
     result = response.choices[0].message.content
     conversation.append({"role":"assistant", "content": result})
+    log(result if result is not None else "Fail to generate response")
+    log("======================================")
     return result if result is not None else "Failed to generate response!"
 
 conversation = []
-system_prompt = read_file("E:\D2L\Agent\TinyAgent\llmApi\Prompts\prompt_react.md")
+# system_prompt = read_file("E:\D2L\Agent\TinyAgent\llmApi\Prompts\prompt_react.md")
+system_prompt = prompt_react + tools_prompt
+print(system_prompt)
 conversation.append({"role": "system", "content": system_prompt})
 
 
@@ -78,9 +81,9 @@ class AgentCore:
 
         
         think, text, func_call, func_args = parse_response(response)
-        print("my think: ", think)
-        print("===========================================\ndeepseek: ", text)
-        print("-------------------------------------------")
+        print('-' * 27, "\nmy think: ", think)
+        print('-' * 27, "\ndeepseek: ", text)
+        print('-' * 27)
         
         while True:
             # print(f"calling {func_call} with {func_args}:\n y to confirm")
@@ -88,7 +91,10 @@ class AgentCore:
             #     continue
 
             # call_func还没有搞定，也就是管理tools的工具，在Tools.py实现
-            observation =  tools.call_func(func_call, func_args)
+            if func_call == "ParseFailure":
+                observation = "你上次生成的回答格式有问题导致Agent无法成功解释，请查阅system_prompt，严格按照要求的输出格式重新输出"
+            else:
+                observation =  tools.call_func(func_call, func_args)
 
             # response = get_response(observation, self.cur_conv)
             
@@ -97,13 +103,12 @@ class AgentCore:
             response = get_response_from_dsApi(observation, conversation)
 
             think, text, func_call, func_args = parse_response(response)
+            
             print("my think: ", think)
-            print("===========================================\ndeepseek: ", text)
-            print("-------------------------------------------")
+            print('-' * 27, "\ndeepseek: ", text)
+            print('-' * 27)
             
             if func_call == "Finish":
                 break
         
         
-        
-    
