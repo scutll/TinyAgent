@@ -1,5 +1,23 @@
 # TinyAgent : a small agent to help you do something
 
+## Setup and start
+先在项目根目录创建config.json, 填上一下信息：
+```JSON
+{
+    "api_key": ,
+    "base_url": 
+}
+```
+填上对应的URL和API_key
+
+然后就可以直接配置Agent并开始任务: 
+```Python
+from Agent.agent_core import AgentCore
+agent = AgentCore()
+agent.set_task("帮我分析这一个项目文件夹，写一个prompts管理的模块，最好将你的代码放到一个文件夹里面")
+agent.run()
+```
+
 (使用本地模型时)Api 启动方式:
 
 - 部署模型和api:
@@ -29,20 +47,3 @@ cloudflared tunnel --url http://localhost:5200
 - Agent有时候会因为JSON无法解析而崩溃,猜测应该是应为prompt描述不够充分原因，ai没有严格按照应有的格式进行输出，导致parse_response函数崩溃(这个函数设计的不够完善也是一方面-_-)
 - 然后是模型的思考路径很短，不知道会不会对实际的代码生成有什么影响-_-, 感觉是prompt给的例子里面本身就很少，感觉如果项目代码比较复杂的话LLM的思考方式可能会出现理解不到位 ~__~
 
-## Setup and start
-先在项目根目录创建config.json, 填上一下信息：
-```JSON
-{
-    "api_key": ,
-    "base_url": 
-}
-```
-填上对应的URL和API_key
-
-然后就可以直接配置Agent并开始任务: 
-```Python
-from Agent.agent_core import AgentCore
-agent = AgentCore()
-agent.set_task("帮我分析这一个项目文件夹，写一个prompts管理的模块，最好将你的代码放到一个文件夹里面")
-agent.run()
-```
