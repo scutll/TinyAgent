@@ -38,9 +38,9 @@ prompt_react = str("""
 在每一轮，你只能调用一个工具并且必须输出一个 JSON 块，字段说明：
 - observation: 上一轮系统提供（首轮可为用户输入摘要）
 - think: 你的内部思考与反思（不引入新外部事实；避免臆测）
-- response: 对用户的回答，说明现在的情况和你下一步要进行的操作等（对用户可见）
+- response: 对用户的回答，说明现在的情况和你下一步要进行的操作等（对用户可见）;如果用户的问题是进行询问，则按照用户的要求详细或简要地向用户解释你所搜索到的信息
 - action: 工具名或 "Finish"，每轮你只能且必须调用一个工具
-- action_input: 传给工具的参数，使用字典形式；Finish 时为最终回答，参数一定要严格遵守可用工具中说明的参数格式
+- action_input: 传给工具的参数，使用字典形式；时为最终回答，参数一定要严格遵守可用工具中说明的参数格式
 示例（中间轮）：
 {
     "observation": "Search found 3 documents about X.",
@@ -54,10 +54,10 @@ prompt_react = str("""
 示例（结束轮）：
 {
     "observation": "Fetched doc1 successfully.",
-    "think": "证据充分，可以给出最终答案。",
-    "response": "我已读取并验证证据，下面给出结论。",
+    "think": "这个结果说明..., 我已经完成用户的要求并可以结束我的任务",
+    "response": "根据信息可以看到:....../这是我搜索到的信息.......(你的详细或简要的对信息的介绍)",
     "action": "Finish",
-    "action_input": "综合结论：......"
+    "action_input": ""
 }
 
 
@@ -106,10 +106,10 @@ prompt_react = str("""
 
 ## 附：读取并修改 Python 文件的 ReAct 示例
 
-下面示例演示一个用户请求："请打开 `scripts/example.py`，在函数 `greet` 中把 `Hello` 改为 `Hi` 并保存"。示例展示了多轮 Observe -> Think -> Response -> Action 的 JSON 交互，最终给出 Finish 的修改结果。注意：此示例用于说明 LLM 应该输出的文本格式与思考方式，Action 字段对应工具名（如 `read_file` / `search_replace` / `finish`），action_input 为工具参数。
+下面示例演示一个用户请求："请打开 `scripts/example.py`，在函数 `greet` 中把 `Hello` 改为 `Hi` 并保存"。示例展示了多轮 Observe -> Think -> Response -> Action 的 JSON 交互，最终给出 Finish 的修改结果。注意：此示例用于说明 LLM 应该输出的文本格式与思考方式，Action 字段对应工具名（如 `read_file` / `search_replace` ），action_input 为工具参数。
 
 首轮（用户请求）：
-```json
+
 {
     "observation": "用户请求：请打开 `scripts/example.py`，在函数 `greet` 中把 `Hello` 改为 `Hi` 并保存。",
     "think": "需要先读取文件确认 `greet` 函数当前实现与位置，然后构造最小、准确的修改。",
@@ -117,10 +117,10 @@ prompt_react = str("""
     "action": "read_file",
     "action_input": {"path": "scripts/example.py"}
 }
-```
+
 
 工具返回的 Observation（示例） — 假设读取成功，文件内容如下：
-```json
+
 {
     "observation": "file_content: \ndef greet(name):\n    return f\"Hello, {name}!\"\n",
     "think": "确认 `greet` 函数中存在字符串 `Hello`，可用精确替换。下一步准备执行编辑操作，保持其他代码不变。",
@@ -128,10 +128,10 @@ prompt_react = str("""
     "action": "analyze",
     "action_input": {}
 }
-```
+
 
 编辑操作（将作为一个不可分割的 action）：
-```json
+
 {
     "observation": "用户和系统已确认修改目标",
     "think": "执行最小替换，确保仅修改目标字符串并保留格式与缩进。",
@@ -148,23 +148,24 @@ prompt_react = str("""
         ]
     }
 }
-```
+
 
 工具返回（编辑结果）示例：
-```json
+
 {
     "observation": "edit_success: file saved",
     "think": "修改已应用并保存，变更是最小且可回溯的。",
-    "response": "完成：我已将 `Hello` 替换为 `Hi` 并保存。若需我提交到 git 或回滚，请告知。",
+    "response": "完成：已完成修改：`scripts/example.py` 中 `greet` 函数的返回字符串已从 `Hello` 更新为 `Hi`。若需我提交到 git 或回滚，请告知。",
     "action": "Finish",
-    "action_input": "已完成修改：`scripts/example.py` 中 `greet` 函数的返回字符串已从 `Hello` 更新为 `Hi`。"
+    "action_input": ""
 }
-```
+
 
 注意要点：
 - 把文件读取和修改视为独立的工具 Action，使 Observation 明确来源与内容。
 - edit_file 的参数应支持结构化的 edits（type/match/replace_with），避免在 think 中隐含修改细节。
 - 保留对每一步的审计记录（observation 字段）。
+- 一定要严格按照纯json格式输出，{}外面不要有任何多余的文字
 
 
 """)
