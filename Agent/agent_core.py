@@ -9,13 +9,6 @@ from prompts.tools_prompt import tools_prompt
 
 # 创建日志目录和文件
 os.makedirs("logs", exist_ok=True)
-def log(message):
-    """写入日志"""
-    log_file_path = f"logs/agent_run_log.txt"
-    with open(log_file_path, "w", encoding='utf-8') as f:
-        f.write(message + '\n')
-        f.flush()
-
 
 from tools.Tools import ToolsContainer
 from Memory.Container import MemoryContainer
@@ -35,12 +28,12 @@ Memory._add_prompt(system_prompt)
 # 导入工具
 tools = ToolsContainer()
 Tools = [ft.search_replace, ft.create_file, ft.read_file, st.list_file, st.tree_file, st.get_absolute_cur_path, st.change_dir, st.delete_dir, st.delete_file]
+tools.load_tool(Tools)
 
 
 class AgentCore:
     def __init__(self):
         self.task = None
-        self.cur_conv = None
 
     def set_task(self, task: str):
         self.task = task
@@ -54,7 +47,7 @@ class AgentCore:
         print("Model reasoning: ")
         response = get_response_from_dsApi(self.task, Memory)
 
-        
+
         think, text, func_call, func_args = parse_response(response)
         print('-' * 27, "\nmy think: ", think)
         print('-' * 27, "\ndeepseek: ", text)
@@ -62,18 +55,16 @@ class AgentCore:
         if func_call == "Finish":
             return
         
+        
         while True:
             # print(f"calling {func_call} with {func_args}:\n y to confirm")
             # while input() != 'y':
             #     continue
 
-            # call_func还没有搞定，也就是管理tools的工具，在Tools.py实现
             if func_call == "ParseFailure":
                 observation = "你上次生成的回答格式有问题导致Agent无法成功解释，请查阅system_prompt，严格按照要求的输出格式重新输出"
             else:
                 observation =  tools.call_func(func_call, func_args)
-
-            # response = get_response(observation, self.cur_conv)
             
             # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             print("Model reasoning: ")

@@ -1,8 +1,8 @@
+import json
 import httpx
 from openai import OpenAI
-from agent_core import log
+from utils.logging import log
 from Memory.Container import MemoryContainer
-
 
 
 def get_response(*args, **kwargs):
@@ -17,11 +17,16 @@ def switch_conversation(*args, **kwargs)->str:
 def delete_conversation(*args, **kwargs):
     pass
 
+# 从配置文件读取API配置
+with open('config.json', 'r') as f:
+    config = json.load(f)
+
 
 client = OpenAI(
-    api_key="sk-e601ccf83e2b414a82f301d4d0b7042b",
-    base_url="https://api.deepseek.com"
+    api_key=config["api_key"],
+    base_url=config["base_url"]
 )
+
 
 def get_response_from_dsApi(input: str, Memory: MemoryContainer):
     Memory._add_user_message(input)
