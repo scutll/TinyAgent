@@ -41,29 +41,54 @@ def list_file(params: str = ""):
             
         return {"text": '\n'.join(result_lines)}
 
-def tree_file(path='.', prefix = ''):
-    '''
-    tree_file: show files recursively in a tree \n
-    args : None \n
-    return: a str show the files structure in a tree\n
-    '''
-    entries = os.listdir(path)
-    entries.sort()
 
+
+import os
+
+def tree_file(path='.', prefix=''):
+    """
+    递归生成目录树字符串
+    :param path: 要展示的目录路径
+    :param prefix: 内部递归使用的前缀字符串
+    :return: 目录结构字符串
+    """
+    # 确保路径存在
+    if not os.path.exists(path):
+        return f"[Error] 路径不存在: {path}"
+
+    # 列出目录下所有文件和文件夹
+    try:
+        entries = sorted(os.listdir(path))
+    except PermissionError:
+        return f"{prefix}└── [权限不足]: {os.path.basename(path)}"
+
+    # 构建结果字符串列表
     result_lines = []
 
-    for index, name in enumerate(entries):
+    for i, name in enumerate(entries):
         full_path = os.path.join(path, name)
-        is_last = index == len(entries) - 1  # 判断是不是当前层的最后一个
+        is_last = i == len(entries) - 1
+
+        # 树形符号
         connector = '└── ' if is_last else '├── '
-        result_lines.append(prefix + connector + name)
 
-        # 如果是文件夹，递归打印它的内容
+        # 当前行
+        result_lines.append(f"{prefix}{connector}{name}")
+
+        # 若是文件夹，递归调用
         if os.path.isdir(full_path):
+            # 为子目录设置缩进前缀
             extension = '    ' if is_last else '│   '
-            result_lines.append(tree_file(full_path, prefix + extension))
+            sub_tree = tree_file(full_path, prefix + extension)
+            if sub_tree:
+                result_lines.append(sub_tree)
 
-    return {"text": '\n'.join(result_lines)}
+    # 根层调用返回完整字符串
+    if prefix == '':
+        return "\n".join(result_lines)
+    else:
+        return "\n".join(result_lines)
+
  
     
 def delete_file(filename: str):

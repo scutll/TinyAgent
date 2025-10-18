@@ -35,14 +35,6 @@ tree_file
   "description": "以树形结构递归显示目录及其所有子目录和文件（类似 `tree` 命令）。此工具适用于全面了解项目结构、查找深层文件位置。",
   "parameters": {
     "properties": {
-      "path": {
-        "description": "要展示的目录路径。可以是相对路径或绝对路径。默认值为 .（当前工作目录）。",
-        "type": "string"
-      },
-      "prefix": {
-        "description": "内部递归使用的缩进前缀。调用者通常不需要设置此参数，保持默认空字符串即可。",
-        "type": "string"
-      }
     },
     "required": [],
     "type": "object"
@@ -51,7 +43,6 @@ tree_file
   "usage_tips": [
     "适用于需要了解完整目录结构的场景",
     "对于大型项目，输出可能较长，应在 `think` 中评估是否需要使用此工具",
-    "可以指定 `path` 参数查看特定子目录的结构"
   ]
 }
 ```
