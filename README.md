@@ -1,13 +1,26 @@
 # TinyAgent : a small agent to help you do something
 
 ## Setup and start
-先在项目根目录创建config.json, 填上一下信息：
+先在项目根目录创建config.json, 填上一下信息：(默认使用豆包)
 ```JSON
 {
-    "api_key": ,
-    "base_url": 
+    "doubao_api_key": ,
+    "doubao_base_url": 
 }
 ```
+如果使用deepseek-api:
+```JSON
+{
+    "ds_api_key": ,
+    "ds_base_url": 
+}
+```
+创建Agent时:
+```python
+agent = AgentCore(UseModel="Deepseek")
+```
+
+
 填上对应的URL和API_key
 
 然后就可以直接配置Agent并开始任务: 

@@ -14,7 +14,7 @@ def list_file(params: str = ""):
     path = "."
     if params == "":
         p = Path(path)
-        return '\n'.join(f.name for f in p.iterdir())
+        return {"text": '\n'.join(f.name for f in p.iterdir())}
     if "-l" in params:
         """
         模拟 ls -l 命令，列出当前路径下所有文件和文件夹的详细信息
@@ -39,7 +39,7 @@ def list_file(params: str = ""):
             line = f"{type_flag}\t{size:>10}\t{mtime}\t{name}"
             result_lines.append(line)
             
-        return '\n'.join(result_lines)
+        return {"text": '\n'.join(result_lines)}
 
 def tree_file(path='.', prefix = ''):
     '''
@@ -63,7 +63,7 @@ def tree_file(path='.', prefix = ''):
             extension = '    ' if is_last else '│   '
             result_lines.append(tree_file(full_path, prefix + extension))
 
-    return '\n'.join(result_lines)
+    return {"text": '\n'.join(result_lines)}
  
     
 def delete_file(filename: str):
@@ -74,9 +74,9 @@ def delete_file(filename: str):
     '''
     try:
         os.remove(filename)
-        return f"{filename} deleted!"
+        return {"text": f"{filename} deleted!"}
     except Exception as e:
-        return f"Error deleting {filename}: {e}"
+        return {"text": f"Error deleting {filename}: {e}"}
     
 
 
@@ -90,18 +90,18 @@ def delete_dir(directory: str):
     try:
         # 判断目录是否存在
         if not os.path.exists(directory):
-            return f"Error: {directory} does not exist."
+            return {"text": f"Error: {directory} does not exist."}
         
         # 判断是否是目录
         if not os.path.isdir(directory):
-            return f"Error: {directory} is not a directory."
+            return {"text": f"Error: {directory} is not a directory."}
 
         # 使用 shutil.rmtree() 递归删除目录及其内容
         shutil.rmtree(directory)
-        return f"{directory} and its contents deleted!"
+        return {"text": f"{directory} and its contents deleted!"}
     
     except Exception as e:
-        return f"Error deleting {directory}: {e}"
+        return {"text": f"Error deleting {directory}: {e}"}
 
 
 
@@ -109,19 +109,7 @@ def get_absolute_cur_path():
     """
     return the absolute path of current working directory
     """
-    return os.path.abspath(os.getcwd())
+    return {"text": os.path.abspath(os.getcwd())}
 
 
-def change_dir(path):
-    """
-    change working directory to path
-    args: the destination path to change to be working path
-        Relative Path or Absolute Path are both supported!
-    """
-    try:
-        os.chdir(path)
-        return f"Changed directory to: {os.path.abspath(os.getcwd())}"
-    except Exception as e:
-        return f"Error changing directory: {e}"
-    
     

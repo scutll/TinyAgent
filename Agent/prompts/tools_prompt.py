@@ -137,32 +137,6 @@ get_absolute_cur_path
 
 ---
 
-change_dir
-
-```json
-{
-  "name": "change_dir",
-  "description": "切换当前工作目录到指定路径。改变后续所有相对路径操作的基准目录。",
-  "parameters": {
-    "properties": {
-      "path": {
-        "description": "目标目录的路径。支持相对路径（相对于当前工作目录）和绝对路径。",
-        "type": "string"
-      }
-    },
-    "required": ["path"],
-    "type": "object"
-  },
-  "returns": "成功时返回 \"Changed directory to: <absolute_path>\"，显示切换后的绝对路径；失败时返回 \"Error changing directory: <error_message>\"（如目录不存在、权限不足等）。",
-  "usage_tips": [
-    "在需要操作特定目录下多个文件时，可先切换到该目录",
-    "切换后可使用 `get_absolute_cur_path` 验证是否切换成功",
-    "注意切换目录会影响后续所有相对路径操作"
-  ]
-}
-```
-
----
 
 read_file
 
@@ -281,7 +255,7 @@ create_file
 
 ---
 
-3.10 Finish
+Finish
 
 ```json
 {

@@ -34,12 +34,12 @@ def fetch_webpage(url: str):
         chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
         text = '\n'.join(chunk for chunk in chunks if chunk)
         
-        return text
+        return {"text": text}
         
     except requests.exceptions.RequestException as e:
-        return f"error in fetching webpage {url}: {str(e)}"
+        return {"text": f"error in fetching webpage {url}: {str(e)}"}
     except Exception as e:
-        return f"error in fetching webpage {url}: {str(e)}"
+        return {"text": f"error in fetching webpage {url}: {str(e)}"}
 
 
 def fetch_webpage_with_selector(url: str, selector: str = "body"):
@@ -67,7 +67,7 @@ def fetch_webpage_with_selector(url: str, selector: str = "body"):
         elements = soup.select(selector)
         
         if not elements:
-            return f"No elements found with selector: {selector}"
+            return {"text": f"No elements found with selector: {selector}"}
         
         # Extract text from all matching elements
         texts = []
@@ -76,9 +76,9 @@ def fetch_webpage_with_selector(url: str, selector: str = "body"):
             if text:
                 texts.append(text)
         
-        return '\n\n'.join(texts)
+        return {"text": '\n\n'.join(texts)}
         
     except requests.exceptions.RequestException as e:
-        return f"error in fetching webpage {url}: {str(e)}"
+        return {"text": f"error in fetching webpage {url}: {str(e)}"}
     except Exception as e:
-        return f"error in fetching webpage {url}: {str(e)}"
+        return {"text": f"error in fetching webpage {url}: {str(e)}"}

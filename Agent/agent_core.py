@@ -3,7 +3,7 @@
 # the agent_core is deployed in user's system, and the Model deployed in the server. agent_core uploads input and gets reply streamly from server
 
 import os
-from Agent.request.api import get_response_from_dsApi
+from Agent.request.api import api
 from Agent.prompts.prompt_react import prompt_react
 from Agent.prompts.tools_prompt import tools_prompt
 
@@ -30,13 +30,14 @@ Memory._add_prompt(system_prompt)
 # 导入工具
 import Agent.tools.Web_tools as wt
 tools = ToolsContainer()
-Tools = [ft.search_replace, ft.create_file, ft.read_file, st.list_file, st.tree_file, st.get_absolute_cur_path, st.change_dir, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector]
+Tools = [ft.search_replace, ft.create_file, ft.read_file, st.list_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector]
 tools.load_tool(Tools)
 
 
 class AgentCore:
-    def __init__(self):
+    def __init__(self, UseModel="Doubao"):
         self.task = None
+        self.UseModel = UseModel
 
     def set_task(self, task: str):
         self.task = task
@@ -48,8 +49,9 @@ class AgentCore:
         # response = get_response(self.task, self.cur_conv)
         
         print("Model reasoning: ")
-        response = get_response_from_dsApi(self.task, Memory)
-
+        # response = get_response_from_dsApi(self.task, Memory)
+        input = {"text": self.task}
+        response = api[self.UseModel](input, Memory)
 
         think, text, func_call, func_args = parse_response(response)
         print('-' * 27, "\nmy think: ", think)
@@ -65,13 +67,14 @@ class AgentCore:
             #     continue
 
             if func_call == "ParseFailure":
-                observation = "你上次生成的回答格式有问题导致Agent无法成功解释，请查阅system_prompt，严格按照要求的输出格式重新输出"
+                observation = {"text": "你上次生成的回答格式有问题导致Agent无法成功解释，请查阅system_prompt，严格按照要求的输出格式重新输出"}
             else:
                 observation =  tools.call_func(func_call, func_args)
             
             # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             print("Model reasoning: ")
-            response = get_response_from_dsApi(observation, Memory)
+            # response = get_response_from_dsApi(observation, Memory)
+            response = api[self.UseModel](observation, Memory)
 
             think, text, func_call, func_args = parse_response(response)
             

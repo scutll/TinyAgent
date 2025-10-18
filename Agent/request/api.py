@@ -1,6 +1,7 @@
 import json
 import httpx
 from openai import OpenAI
+from volcenginesdkarkruntime import Ark
 from Agent.utils.logging import log
 from Agent.Memory.Container import MemoryContainer
 
@@ -23,12 +24,13 @@ with open('config.json', 'r') as f:
 
 
 client = OpenAI(
-    api_key=config["api_key"],
-    base_url=config["base_url"]
+    api_key=config["ds_api_key"],
+    base_url=config["ds_base_url"]
 )
 
 
-def get_response_from_dsApi(input: str, Memory: MemoryContainer):
+def get_response_from_dsApi(input, Memory: MemoryContainer):
+    input = str(input["text"])
     Memory._add_user_message(input)
     
     response = client.chat.completions.create(
@@ -41,3 +43,29 @@ def get_response_from_dsApi(input: str, Memory: MemoryContainer):
     log("(deepseek): " + result if result is not None else "Fail to generate response")
     log("======================================")
     return result if result is not None else "Failed to generate response!"
+
+
+def get_response_from_Doubao(input, Memory: MemoryContainer):
+    # 后面可以添加图片
+    input = input["text"]
+    Memory._add_user_message(input)
+    
+    client = Ark(
+        api_key=config["doubao_api_key"],
+        base_url=config["doubao_base_url"]
+    )
+    completion = client.chat.completions.create(
+        model="doubao-seed-1-6-vision-250815",
+        messages=Memory(),
+    )
+    result = str(completion.choices[0].message.content)
+    Memory._add_assistant_message(str(result))
+    log("(Doubao): " + result if result is not None else "Fail to generate response")
+    log("======================================")
+    return result if result is not None else "Failed to generate response!"
+
+
+api = {
+    "Doubao": get_response_from_Doubao,
+    "Deepseek": get_response_from_dsApi
+}

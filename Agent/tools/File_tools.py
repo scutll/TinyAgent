@@ -10,7 +10,7 @@ def read_file(path:str):
             content = f.read()
     except Exception as e:
         content = f"error in reading {path}: {e}"
-    return content
+    return {"text": content}
 
 def search_replace(path:str, match: str, replace: str):
     """Search and replace in a text file.
@@ -36,9 +36,9 @@ def search_replace(path:str, match: str, replace: str):
         with open(path, "w", encoding='utf-8') as f:
             f.write(new_content)
 
-        return new_content
+        return {"text": new_content}
     except Exception as e:
-        return f"error in search_replace {path}: {e}"
+        return {"text": f"error in search_replace {path}: {e}"}
 
 
 def create_file(path:str, file_name:str, content: str):
@@ -69,13 +69,13 @@ def create_file(path:str, file_name:str, content: str):
         
         # Check if file already exists
         if os.path.exists(full_path):
-            return f"error in creating file: {full_path} already exists"
+            return {"text": f"error in creating file: {full_path} already exists"}
         
         # Create and write to the file
         with open(full_path, "w", encoding='utf-8') as f:
             f.write(content)
         
-        return f"File created successfully: {full_path}"
+        return {"text": f"File created successfully: {full_path}"}
 
     except Exception as e:
-        return f"error in creating file {os.path.join(path, file_name)}: {e}"
+        return {"text": f"error in creating file {os.path.join(path, file_name)}: {e}"}
