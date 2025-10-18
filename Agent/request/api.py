@@ -30,9 +30,9 @@ client = OpenAI(
 
 
 def get_response_from_dsApi(input, Memory: MemoryContainer):
-    input = str(input["text"])
-    Memory._add_user_message(input)
     
+    input = input["text"]
+    Memory._add_user_message(input)
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=Memory(),
@@ -46,10 +46,11 @@ def get_response_from_dsApi(input, Memory: MemoryContainer):
 
 
 def get_response_from_Doubao(input, Memory: MemoryContainer):
-    # 后面可以添加图片
-    input = input["text"]
-    Memory._add_user_message(input)
+    # 带图片的文本以List形式的参数给到input
+    if isinstance(input,dict):
+        input = input["text"]
     
+    Memory._add_user_message(input)
     client = Ark(
         api_key=config["doubao_api_key"],
         base_url=config["doubao_base_url"]

@@ -20,7 +20,8 @@ import Agent.tools.System_tools as st
 
 # 初始化conversation(Memory)
 from Agent.prompts.web_tools_prompt import web_tools_prompt
-tools_prompt += web_tools_prompt
+from Agent.prompts.word_tools_prompt import word_tools_prompt
+tools_prompt += web_tools_prompt + word_tools_prompt
 system_prompt = prompt_react + tools_prompt
 Memory = MemoryContainer()
 Memory._add_prompt(system_prompt)
@@ -29,8 +30,9 @@ Memory._add_prompt(system_prompt)
 
 # 导入工具
 import Agent.tools.Web_tools as wt
+import Agent.tools.docs_tools as dt
 tools = ToolsContainer()
-Tools = [ft.search_replace, ft.create_file, ft.read_file, st.list_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector]
+Tools = [ft.search_replace, ft.create_file, ft.read_file, st.list_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector, dt.read_word_document]
 tools.load_tool(Tools)
 
 

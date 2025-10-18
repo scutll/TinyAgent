@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any, List, Union
 
 
 class MemoryContainer:
@@ -6,10 +6,10 @@ class MemoryContainer:
         self.conversation = conversation
         
         
-    def _add_tool_message(self, message: str):
+    def _add_tool_message(self, message: Union[str, List]):
         self.conversation.append({"role": "tool", "content": message})
         
-    def _add_user_message(self, message: str):
+    def _add_user_message(self, message: Union[str, List]):
         self.conversation.append({"role": "user", "content": message})
         
     def _add_assistant_message(self, message: str):
