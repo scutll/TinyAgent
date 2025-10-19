@@ -37,5 +37,53 @@ def read_word_document(path: str) -> List[Dict]:
     return contents
 
 
+def extract_info_from_docx_table(file_path):
+    """
+    只提取单元格内容，不加额外标注
+    
+    :param file_path: docx文件路径
+    :return: 简洁的表格内容字符串
+    """
+    import os
+    import zipfile
+    
+    if not os.path.exists(file_path):
+        return {"text": f"error in reading {file_path}: 文件不存在"}
+    
+    try:
+        # 直接尝试用宽容模式读取，忽略损坏的图片
+        import xml.etree.ElementTree as ET
+        
+        result = []
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            if 'word/document.xml' not in zip_ref.namelist():
+                return {"text": f"error in reading {file_path}: 不是有效的.docx文件"}
+            
+            xml_content = zip_ref.read('word/document.xml')
+            root = ET.fromstring(xml_content)
+            
+            # 提取表格中的文本
+            namespaces = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+            for table in root.findall('.//w:tbl', namespaces):
+                for row in table.findall('.//w:tr', namespaces):
+                    for cell in row.findall('.//w:tc', namespaces):
+                        cell_texts = cell.findall('.//w:t', namespaces)
+                        cell_content = ''.join([t.text for t in cell_texts if t.text])
+                        if cell_content.strip():
+                            result.append(cell_content.strip())
+        
+        if not result:
+            return {"text": f"error in reading {file_path}: 文档中没有找到表格内容"}
+        
+        return {"text": "\n".join(result)}
+    
+    except zipfile.BadZipFile:
+        return {"text": f"error in reading {file_path}: 文件格式错误，不是有效的.docx文件"}
+    except Exception as e:
+        return {"text": f"error in reading {file_path}: {str(e)}"}
+
+
+
+
 if __name__ == "__main__":
-    print(read_word_document("docs/JavaHW20251015.docx"))
+    print(str(extract_info_from_docx_table("gydl/入会申请书[2].docx")))
