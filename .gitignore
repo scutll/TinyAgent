@@ -422,3 +422,4 @@ Agent/agent_test.py
 logs/*
 config.json
 docs/
+deepseek_vl/
