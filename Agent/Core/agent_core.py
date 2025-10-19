@@ -14,6 +14,7 @@ from Agent.tools.Tools import ToolsContainer
 from Agent.Memory.Container import MemoryContainer
 from Agent.request.api import *
 from Agent.utils.parser import parse_response
+from Agent.utils.logging import log
 import Agent.tools.File_tools as ft
 import Agent.tools.System_tools as st
 
@@ -71,12 +72,12 @@ class AgentCore:
                 observation = {"text": "你上次生成的回答格式有问题导致Agent无法成功解释，请查阅system_prompt，严格按照要求的输出格式重新输出"}
             else:
                 observation =  tools.call_func(func_call, func_args)
+            if isinstance(observation, str) and func_call != dt.read_word_document.__name__:
+                log(message=f"(observation): \n{observation}")
             
             # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             print("Model reasoning: ")
             # response = get_response_from_dsApi(observation, Memory)
-            if not isinstance(observation, list):
-                print(observation)
             response = api[self.UseModel](observation, Memory)
 
             think, text, func_call, func_args = parse_response(response)
