@@ -35,7 +35,6 @@ tools = ToolsContainer()
 Tools = [ft.search_replace, ft.create_file, ft.read_file, st.list_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector, dt.read_word_document]
 tools.load_tool(Tools)
 
-
 class AgentCore:
     def __init__(self, UseModel="Doubao"):
         self.task = None
@@ -57,7 +56,7 @@ class AgentCore:
 
         think, text, func_call, func_args = parse_response(response)
         print('-' * 27, "\nmy think: ", think)
-        print('-' * 27, "\ndeepseek: ", text)
+        print('-' * 27, "\nAssistant: ", text)
         print('-' * 27)
         if func_call == "Finish":
             return
@@ -76,12 +75,14 @@ class AgentCore:
             # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             print("Model reasoning: ")
             # response = get_response_from_dsApi(observation, Memory)
+            if not isinstance(observation, list):
+                print(observation)
             response = api[self.UseModel](observation, Memory)
 
             think, text, func_call, func_args = parse_response(response)
             
             print("my think: ", think)
-            print('-' * 27, "\ndeepseek: ", text)
+            print('-' * 27, "\nAssistant: ", text)
             print('-' * 27)
             
             if func_call == "Finish":

@@ -58,6 +58,7 @@ def get_response_from_Doubao(input, Memory: MemoryContainer):
     completion = client.chat.completions.create(
         model="doubao-seed-1-6-vision-250815",
         messages=Memory(),
+        stream=False,
     )
     result = str(completion.choices[0].message.content)
     Memory._add_assistant_message(str(result))

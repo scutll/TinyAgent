@@ -9,7 +9,7 @@ list_file
   "parameters": {
     "properties": {
       "params": {
-        "description": "可选参数。当值为 \"-l\" 时，返回详细列表（包括文件类型、大小、最后修改时间）；为空字符串或不提供时，仅返回文件/目录名列表，每项一行。",
+        "description": "可且只可使用 \"-l\", 可以查看文件详细信息",
         "type": "string"
       }
     },
@@ -211,11 +211,11 @@ create_file
   "parameters": {
     "properties": {
       "path": {
-        "description": "要创建文件的目录路径。支持相对路径和绝对路径。若目录不存在，将自动递归创建。",
+        "description": "要创建文件的目录路径。支持相对路径和绝对路径。若目录不存在，将自动递归创建。Example: ./Test",
         "type": "string"
       },
       "file_name": {
-        "description": "要创建的文件名，必须包含扩展名（如 .py、.txt、.json 等）。文件名不应包含路径分隔符。",
+        "description": "要创建的文件名，必须包含扩展名（如 .py、.txt、.json 等）。文件名不应包含路径分隔符, 也不应该有目录前缀，而应该是单纯的文件名。Example: test.txt",
         "type": "string"
       },
       "content": {

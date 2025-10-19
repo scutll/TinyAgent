@@ -12,7 +12,7 @@ def list_file(params: str = ""):
     '''
     
     path = "."
-    if params == "":
+    if params == "" or params != "-l":
         p = Path(path)
         return {"text": '\n'.join(f.name for f in p.iterdir())}
     if "-l" in params:

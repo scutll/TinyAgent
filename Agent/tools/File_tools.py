@@ -79,3 +79,6 @@ def create_file(path:str, file_name:str, content: str):
 
     except Exception as e:
         return {"text": f"error in creating file {os.path.join(path, file_name)}: {e}"}
+    
+if __name__ == "__main__":
+    print(create_file(path="./JavaHW/", file_name="DigitSum.java", content=""))

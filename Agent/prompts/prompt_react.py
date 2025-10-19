@@ -165,6 +165,7 @@ prompt_react = str("""
 - 把文件读取和修改视为独立的工具 Action，使 Observation 明确来源与内容。
 - edit_file 的参数应支持结构化的 edits（type/match/replace_with），避免在 think 中隐含修改细节。
 - 保留对每一步的审计记录（observation 字段）。
+- 不要随便重复尝试之前已经失败过的操作(意味着如果一次工具调用参数不合适，不要轻易尝试重复使用相同的错误参数进行调用)
 - 一定要严格按照纯json格式输出，{}外面不要有任何多余的文字
 
 

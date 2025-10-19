@@ -38,4 +38,4 @@ def read_word_document(path: str) -> List[Dict]:
 
 
 if __name__ == "__main__":
-    print(read_word_document("docs/test.docx"))
+    print(read_word_document("docs/JavaHW20251015.docx"))
