@@ -4,7 +4,7 @@ from openai import OpenAI
 from volcenginesdkarkruntime import Ark
 from Agent.utils.logging import log
 from Agent.Memory.Container import MemoryContainer
-
+from typing import Dict
 
 def get_response(*args, **kwargs):
     pass
@@ -37,7 +37,7 @@ client = OpenAI(
 
 def get_response_from_dsApi(input, Memory: MemoryContainer):
     
-    input = input["text"]
+    input = str(input)
     Memory._add_user_message(input)
     response = client.chat.completions.create(
         model="deepseek-chat",

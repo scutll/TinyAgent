@@ -24,8 +24,6 @@ from Agent.prompts.web_tools_prompt import web_tools_prompt
 from Agent.prompts.word_tools_prompt import word_tools_prompt
 tools_prompt += web_tools_prompt + word_tools_prompt
 system_prompt = prompt_react + tools_prompt
-Memory = MemoryContainer()
-Memory._add_prompt(system_prompt)
 
 
 
@@ -33,16 +31,23 @@ Memory._add_prompt(system_prompt)
 import Agent.tools.Web_tools as wt
 import Agent.tools.docs_tools as dt
 tools = ToolsContainer()
-Tools = [ft.search_replace, ft.create_file, ft.read_file, st.list_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector, dt.read_word_document]
+Tools = [ft.search_replace, ft.create_file, ft.read_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector, dt.read_word_document, dt.extract_info_from_docx_table]
 tools.load_tool(Tools)
 
 class AgentCore:
     def __init__(self, UseModel="Doubao"):
         self.task = None
         self.UseModel = UseModel
+        self.Memory = MemoryContainer()
+        self.Memory._add_prompt(system_prompt)
 
     def set_task(self, task: str):
         self.task = task
+        
+    def reset_memory__(self):
+        self.Memory.reset__()
+        self.Memory._add_prompt(system_prompt)
+        print("memory reset!")
 
     def run(self):
         if self.task is None:
@@ -53,7 +58,7 @@ class AgentCore:
         print("Model reasoning: ")
         # response = get_response_from_dsApi(self.task, Memory)
         input = {"text": self.task}
-        response = api[self.UseModel](input, Memory)
+        response = api[self.UseModel](input, self.Memory)
 
         think, text, func_call, func_args = parse_response(response)
         print('-' * 27, "\nmy think: ", think)
@@ -78,7 +83,7 @@ class AgentCore:
             # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             print("Model reasoning: ")
             # response = get_response_from_dsApi(observation, Memory)
-            response = api[self.UseModel](observation, Memory)
+            response = api[self.UseModel](observation, self.Memory)
 
             think, text, func_call, func_args = parse_response(response)
             

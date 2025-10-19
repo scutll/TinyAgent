@@ -5,6 +5,9 @@ class MemoryContainer:
     def __init__(self, conversation=[]):
         self.conversation = conversation
         
+    def reset__(self):
+        self.conversation = []
+        
         
     def _add_tool_message(self, message: Union[str, List]):
         self.conversation.append({"role": "tool", "content": message})
