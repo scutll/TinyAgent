@@ -4,42 +4,42 @@ import os
 import time
 import shutil
 
-def list_file(params: str = ""):
-    '''
-    list_file: show the file list --> ls in terminal \n
-    args: str such as '-l' to specify the mode to show listfiles \n 
-    return: a string showing the file list in current path\n
-    '''
+# def list_file(params: str = ""):
+#     '''
+#     list_file: show the file list --> ls in terminal \n
+#     args: str such as '-l' to specify the mode to show listfiles \n 
+#     return: a string showing the file list in current path\n
+#     '''
     
-    path = "."
-    if params == "" or params != "-l":
-        p = Path(path)
-        return {"text": '\n'.join(f.name for f in p.iterdir())}
-    if "-l" in params:
-        """
-        模拟 ls -l 命令，列出当前路径下所有文件和文件夹的详细信息
-        """
-        # 获取目录下所有文件/文件夹
-        entries = os.listdir(path)
-        result_lines = []
+#     path = "."
+#     if params == "" or params != "-l":
+#         p = Path(path)
+#         return {"text": '\n'.join(f.name for f in p.iterdir())}
+#     if "-l" in params:
+#         """
+#         模拟 ls -l 命令，列出当前路径下所有文件和文件夹的详细信息
+#         """
+#         # 获取目录下所有文件/文件夹
+#         entries = os.listdir(path)
+#         result_lines = []
 
-        for name in entries:
-            full_path = os.path.join(path + "/", name)
+#         for name in entries:
+#             full_path = os.path.join(path + "/", name)
 
-            # 判断文件类型
-            type_flag = 'd' if os.path.isdir(full_path) else 'f'
+#             # 判断文件类型
+#             type_flag = 'd' if os.path.isdir(full_path) else 'f'
 
-            # 获取文件大小（字节）
-            size = os.path.getsize(full_path)
+#             # 获取文件大小（字节）
+#             size = os.path.getsize(full_path)
 
-            # 获取最后修改时间
-            mtime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(full_path)))
+#             # 获取最后修改时间
+#             mtime = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(full_path)))
 
-            # 拼接成一行
-            line = f"{type_flag}\t{size:>10}\t{mtime}\t{name}"
-            result_lines.append(line)
+#             # 拼接成一行
+#             line = f"{type_flag}\t{size:>10}\t{mtime}\t{name}"
+#             result_lines.append(line)
             
-        return {"text": '\n'.join(result_lines)}
+#         return {"text": '\n'.join(result_lines)}
 
 
 
