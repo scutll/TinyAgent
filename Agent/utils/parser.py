@@ -13,9 +13,9 @@ def parse_response(response: str)->Tuple[str, str, str, dict]:
             
             
     except Exception as e:
-        log(e)
+        log(str(e))
         log("Error: failed to parse response=================\n" + response)
-        return "", str(e) + response, "ParseFailure:", dict()
+        return "", str(e) + "\n" + response, "ParseFailure", dict()
 
     return data["think"], data["response"], data["action"], data["action_input"]
     
