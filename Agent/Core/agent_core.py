@@ -22,7 +22,8 @@ import Agent.tools.System_tools as st
 # 初始化conversation(Memory)
 from Agent.prompts.web_tools_prompt import web_tools_prompt
 from Agent.prompts.word_tools_prompt import word_tools_prompt
-tools_prompt += web_tools_prompt + word_tools_prompt
+from Agent.prompts.inquery_prompt import inquery_user_prompt
+tools_prompt += web_tools_prompt + word_tools_prompt + inquery_user_prompt
 system_prompt = prompt_react + tools_prompt
 
 
@@ -30,8 +31,9 @@ system_prompt = prompt_react + tools_prompt
 # 导入工具
 import Agent.tools.Web_tools as wt
 import Agent.tools.docs_tools as dt
+import Agent.tools.inquery_tool as it
 tools = ToolsContainer()
-Tools = [ft.search_replace, ft.create_file, ft.read_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector, dt.read_word_document, dt.extract_info_from_docx_table]
+Tools = [ft.search_replace, ft.create_file, ft.read_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector, dt.read_word_document, dt.extract_info_from_docx_table, it.inquery_uesr]
 tools.load_tool(Tools)
 
 class AgentCore:
@@ -97,5 +99,6 @@ class AgentCore:
             
             if func_call == "Finish":
                 break
+        log("==================Finish Task====================")
         
         
