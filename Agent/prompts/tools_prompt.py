@@ -1,10 +1,7 @@
-tools_prompt = str("""
-下面列出所有可用工具的详细说明。每个工具都以完整的 JSON Schema 格式定义，包含名称、描述、参数定义、输出说明和使用建议。调用工具时必须严格遵循参数要求。
 
-
+tree_file_prompt = """
 tree_file
-
-```json
+json
 {
   "name": "tree_file",
   "description": "以树形结构递归显示目录及其所有子目录和文件（类似 `tree` 命令）。此工具适用于全面了解项目结构、查找深层文件位置。",
@@ -20,13 +17,12 @@ tree_file
     "对于大型项目，输出可能较长，应在 `think` 中评估是否需要使用此工具",
   ]
 }
-```
-
 ---
+"""
 
+delete_file_prompt = """
 delete_file
 
-```json
 {
   "name": "delete_file",
   "description": "删除指定的单个文件。此操作不可逆，应谨慎使用。",
@@ -48,13 +44,12 @@ delete_file
     "不能用于删除目录（删除目录请使用 `delete_dir`）"
   ]
 }
-```
-
 ---
 
+"""
+delete_dir_prompt = """
 delete_dir
 
-```json
 {
   "name": "delete_dir",
   "description": "递归删除整个目录及其所有内容（包括所有子目录和文件）。这是一个高风险操作，不可逆，使用时必须极其谨慎。",
@@ -77,13 +72,14 @@ delete_dir
     "必要时应在 `response` 中要求用户明确确认"
   ]
 }
-```
 
 ---
+"""
+
+get_absolute_cur_path_prompt = """
 
 get_absolute_cur_path
 
-```json
 {
   "name": "get_absolute_cur_path",
   "description": "获取当前工作目录的绝对路径。用于确认当前位置、构建绝对路径、调试路径问题。",
@@ -99,14 +95,15 @@ get_absolute_cur_path
     "有助于构建和验证文件的完整路径"
   ]
 }
-```
 
 ---
 
+"""
+
+read_file_prompt = """
 
 read_file
 
-```json
 {
   "name": "read_file",
   "description": "读取指定文本文件的完整内容。此工具将文件内容作为字符串返回，适用于分析、修改或展示文件内容。调用此工具时，你有责任确保获取了完整的上下文。每次调用时应该：1) 评估查看的内容是否足以完成任务；2) 注意哪些部分未显示；3) 如果内容不足且可能在未显示部分，主动再次调用工具查看；4) 有疑问时，再次调用工具获取更多信息。",
@@ -129,13 +126,13 @@ read_file
     "确保获取完整上下文，避免遗漏关键信息"
   ]
 }
-```
 
 ---
+"""
+search_replace_prompt = """
 
 search_replace
 
-```json
 {
   "name": "search_replace",
   "description": "在文本文件中搜索并替换指定内容。支持全局替换（替换所有匹配项）或整体覆盖（当 `match` 为 null 时）。修改会立即写入文件，不可撤销。",
@@ -173,13 +170,14 @@ search_replace
     "建议在 `search_replace` 调用后再次使用 `read_file` 确认修改结果"
   ]
 }
-```
 
 ---
 
-create_file
+"""
 
-```json
+
+create_file_prompt = """
+create_file
 {
   "name": "create_file",
   "description": "在指定目录中创建新文件并写入初始内容。如果目标目录不存在，会自动递归创建所需的目录结构。此工具不会覆盖已存在的文件。",
@@ -217,13 +215,11 @@ create_file
     "如需创建多个文件，应分别调用此工具"
   ]
 }
-```
-
 ---
+"""
 
+Finish_prompt = """
 Finish
-
-```json
 {
   "name": "Finish",
   "description": "标记任务完成或无法完成。使用此工具表示你已完成用户的请求，或经过充分尝试后确认任务无法完成。最终的总结和回复应该体现在 `response` 字段中。",
@@ -246,7 +242,175 @@ Finish
     "最终答案应对用户友好、易于理解"
   ]
 }
-```
 
 ---
-""")
+"""
+
+inquery_user_prompt = """
+{
+  "name": "inquery_user",
+  "description": "在需要用户确认或补充关键信息时向用户发起交互式询问。适用于：高风险操作确认（如删除/覆盖）、不明确的用户意图澄清时的询问。",
+  "parameters": {
+    "properties": {
+    },
+    "required": [],
+    "type": "object"
+  },
+  "returns": "成功时返回用户的输入字符串；若读取输入失败，返回以 \"Error reading user input:\" 开头的错误描述字符串。",
+  "safety_warnings": [
+    "当LLM希望提问时，应该简单说明LLM想要获取的信息或许可，提示用户需要他输入信息"
+    "在执行高危操作前应文本确认（非仅 y/n 的模糊确认，若风险极高建议再次确认）"
+  ],
+  "usage_tips": [
+    "在进行不可逆操作（如 delete_file/delete_dir/search_replace 覆盖）,或执行一些可能引发危险的CMD命令的时候调用以获取用户明确许可",
+    "在用户意图(是否要修改某文件/是否要创建文件/目的)不够明确时调用,向用户询问必要的信息, 以避免工具误用或幻觉",
+    "当LLM希望提问时，应该简单说明LLM想要获取的信息或许可，提示用户需要他输入信息"
+  ]
+}
+"""
+
+fetch_webpage_prompt = """
+fetch_webpage
+
+
+{
+  "name": "fetch_webpage",
+  "description": "抓取网页内容并提取主要文本。此工具使用HTTP请求获取网页HTML，然后解析并清理文本内容，去除脚本、样式等无关元素，返回纯净的文本内容。适用于获取网页文章、新闻、文档等文本信息。",
+  "parameters": {
+    "properties": {
+      "url": {
+        "description": "要抓取的网页URL。必须是有效的HTTP或HTTPS网址。",
+        "type": "string"
+      }
+    },
+    "required": ["url"],
+    "type": "object"
+  },
+  "returns": "成功时返回网页的清理后文本内容；失败时返回以 \"error in fetching webpage {url}: \" 开头的错误描述字符串（如网络连接失败、URL无效、超时等）。",
+  "safety_warnings": [
+    "此工具会发起外部网络请求，可能涉及隐私和安全风险",
+    "仅用于抓取公开可访问的网页，避免访问敏感或受限内容",
+    "网络请求可能失败或超时，应在 `think` 中准备备用方案",
+    "对于重要数据，建议在 `think` 中验证URL的正确性和安全性"
+  ],
+  "usage_tips": [
+    "Baidu搜索可能有爬虫验证，优先可以使用Wiki百科进行搜索",
+    "适用于获取新闻文章、博客内容、文档页面等文本信息",
+    "对于需要特定部分内容的网页，可使用 `fetch_webpage_with_selector` 工具",
+    "网络连接可能不稳定，建议在 `think` 中考虑重试机制",
+    "返回的文本已去除HTML标签和无关元素，适合直接分析",
+    "对于大型网页，输出可能较长，应在 `think` 中评估是否需要分块处理"
+  ]
+}
+---
+
+"""
+
+
+fetch_webpage_with_selector_prompt = """
+fetch_webpage_with_selector
+{
+  "name": "fetch_webpage_with_selector",
+  "description": "使用CSS选择器抓取网页特定部分的内容。此工具获取网页HTML后，使用指定的CSS选择器定位目标元素，只返回匹配元素的文本内容。适用于精确提取网页特定区域的内容，如文章正文、标题、列表等。",
+  "parameters": {
+    "properties": {
+      "url": {
+        "description": "要抓取的网页URL。必须是有效的HTTP或HTTPS网址。",
+        "type": "string"
+      },
+      "selector": {
+        "description": "CSS选择器，用于定位网页中的特定元素。例如：\"article\" 选择文章区域，\".content\" 选择class为content的元素，\"#main\" 选择id为main的元素。默认值为 \"body\"。",
+        "type": "string"
+      }
+    },
+    "required": ["url"],
+    "type": "object"
+  },
+  "returns": "成功时返回匹配选择器的元素文本内容；如果未找到匹配元素，返回 \"No elements found with selector: {selector}\"；失败时返回以 \"error in fetching webpage {url}: \" 开头的错误描述字符串。",
+  "safety_warnings": [
+    "此工具会发起外部网络请求，可能涉及隐私和安全风险",
+    "仅用于抓取公开可访问的网页，避免访问敏感或受限内容",
+    "选择器可能无法匹配到内容，应在 `think` 中准备备用选择器或方案",
+    "网络请求可能失败或超时，应在 `think` 中考虑重试机制"
+  ],
+  "usage_tips": [
+    "适用于精确提取网页特定部分的内容，如文章正文、评论区、导航菜单等",
+    "常见CSS选择器示例：\"article\"（文章）、\".content\"（内容区域）、\"#main\"（主区域）、\"p\"（段落）、\"h1\"（标题）",
+    "如果不确定选择器，可先用 `fetch_webpage` 获取完整内容分析结构",
+    "对于动态加载的内容，此工具可能无法获取，需要其他技术手段",
+    "建议在 `think` 中说明选择器的选择理由和预期目标"
+  ]
+}
+"""
+
+read_word_document_prompt = """
+---
+
+read_word_document
+{
+  "name": "read_word_document",
+  "description": "读取包含图片的Word文档,返回文本和图片的Base64编码内容,按顺序排列。此工具解析Word文档(.docx格式),提取其中的文本段落和嵌入图片,将图片转换为Base64编码,按照在文档中出现的顺序返回。适用于需要同时处理文档文本和图片内容的场景。",
+  "parameters": {
+    "properties": {
+      "path": {
+        "description": "Word文档的文件路径。支持相对路径(相对于当前工作目录)和绝对路径。必须是.docx格式的Word文档。",
+        "type": "string"
+      }
+    },
+    "required": ["path"],
+    "type": "object"
+  },
+  "returns": "成功时返回列表,包含文档内容的有序组合。每个元素是字典:文本内容为 {\"type\": \"text\", \"text\": \"内容\"},图片为 {\"type\": \"image_url\", \"image_url\": {\"url\": \"data:image/格式;base64,编码数据\"}}。失败时返回以 \"error in reading {path}: \" 开头的错误描述字符串(如文件不存在、格式错误、权限不足等)。",
+  "safety_warnings": [
+    "仅支持.docx格式的Word文档,不支持旧版.doc格式",
+    "大型文档或包含大量高分辨率图片的文档可能导致返回数据量很大",
+    "图片以Base64编码返回,会占用较多内存和token",
+    "应在 `think` 中评估文档大小和复杂度,避免处理超大文件"
+  ],
+  "usage_tips": [
+    "适用于需要提取Word文档中文本和图片的场景,如文档分析、内容提取、格式转换等",
+    "返回的内容按文档中出现顺序排列,保持原始结构",
+    "图片已转换为Base64编码,可直接用于显示或进一步处理",
+    "读取前可先用 `tree_file` 确认文件存在且为.docx格式",
+    "对于只需要文本内容的场景,建议使用其他更轻量的文本提取工具",
+    "建议在 `think` 中说明需要从文档中提取哪些信息"
+    "如果读取文件信息比较少，可能是因为文档是表格形式的，可以使用extract_info_from_docx_table来重新读取"
+  ]
+}
+---
+"""
+extract_info_from_docx_table_prompt = """
+extract_info_from_docx_table
+{
+  "name": "extract_info_from_docx_table",
+  "description": "提取Word文档(.docx格式)中所有表格的单元格内容,返回纯文本字符串。此工具专门用于解析包含表格的Word文档,自动遍历所有表格并提取每个单元格的文本内容,去除空白字符后按顺序拼接成字符串,每个单元格内容占一行。适用于表单、申请表、数据表等结构化文档的信息提取场景。",
+  "parameters": {
+    "properties": {
+      "file_path": {
+        "description": "Word文档的文件路径。支持相对路径(相对于当前工作目录)和绝对路径。必须是.docx格式的Word文档,且文档中包含表格内容。",
+        "type": "string"
+      }
+    },
+    "required": ["file_path"],
+    "type": "object"
+  },
+  "returns": "成功时返回字符串,包含文档中所有表格的单元格内容,每个非空单元格内容占一行,按表格顺序和单元格位置(从左到右、从上到下)依次排列。失败时抛出FileNotFoundError异常并返回错误描述字符串(如\"文件不存在: {file_path}\"),或因文件格式错误、权限不足等原因导致的其他异常。",
+  "safety_warnings": [
+    "仅支持.docx格式的Word文档,不支持旧版.doc格式",
+    "只提取表格内容,不包含文档中的普通段落文本",
+    "会自动过滤空单元格,只返回有内容的单元格",
+    "对于包含大量表格或复杂表格结构的文档,返回的字符串可能很长",
+    "不保留表格的格式信息(如合并单元格、边框、颜色等),只提取纯文本内容"
+  ],
+  "usage_tips": [
+    "适用于提取入会申请表、信息登记表、数据统计表等包含表格的Word文档",
+    "返回的是简洁的纯文本格式,每行一个单元格内容,便于后续解析和处理",
+    "对于需要保留表格结构信息的场景,建议使用其他更完整的表格解析工具",
+    "提取后的内容可以直接用于文本分析、信息提取、数据录入等场景",
+    "建议在 `think` 中说明需要从表格中提取哪些字段或信息",
+    "如果文档包含多个表格,所有表格内容会按顺序合并返回",
+    "单元格内的换行符会被保留,可能导致某些内容跨多行显示"
+  ]
+}
+
+"""

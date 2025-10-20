@@ -5,36 +5,39 @@
 import os
 from Agent.request.api import api
 from Agent.prompts.prompt_react import prompt_react
-from Agent.prompts.tools_prompt import tools_prompt
+from Agent.prompts.tools_prompt import *
 
 # 创建日志目录和文件
 os.makedirs("logs", exist_ok=True)
 
-from Agent.tools.Tools import ToolsContainer
 from Agent.Memory.Container import MemoryContainer
 from Agent.request.api import *
 from Agent.utils.parser import parse_response
 from Agent.utils.logging import log
-import Agent.tools.File_tools as ft
-import Agent.tools.System_tools as st
-
-
-# 初始化conversation(Memory)
-from Agent.prompts.web_tools_prompt import web_tools_prompt
-from Agent.prompts.word_tools_prompt import word_tools_prompt
-from Agent.prompts.inquery_prompt import inquery_user_prompt
-tools_prompt += web_tools_prompt + word_tools_prompt + inquery_user_prompt
-system_prompt = prompt_react + tools_prompt
-
 
 
 # 导入工具
+from Agent.tools.Tools import ToolsContainer
+import Agent.tools.File_tools as ft
+import Agent.tools.System_tools as st
 import Agent.tools.Web_tools as wt
 import Agent.tools.docs_tools as dt
 import Agent.tools.inquery_tool as it
+from Agent.prompts.tools_prompt import Finish_prompt 
 tools = ToolsContainer()
-Tools = [ft.search_replace, ft.create_file, ft.read_file, st.tree_file, st.get_absolute_cur_path, st.delete_dir, st.delete_file, wt.fetch_webpage, wt.fetch_webpage_with_selector, dt.read_word_document, dt.extract_info_from_docx_table, it.inquery_uesr]
+Tools = [it.inquery_user(),
+         ft.create_file(), ft.read_file(), ft.search_replace(),
+         st.delete_dir(), st.delete_file(), st.get_absolute_cur_path(), st.tree_file(),
+         dt.read_word_document(), dt.extract_info_from_docx_table(),
+         wt.fetch_webpage_with_selector(), wt.fetch_webpage()]
 tools.load_tool(Tools)
+
+
+# 初始化conversation(Memory)
+
+system_prompt = prompt_react + tools.prompt_all_tools + Finish_prompt
+print(system_prompt)
+
 
 class AgentCore:
     def __init__(self, UseModel="Doubao"):
