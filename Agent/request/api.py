@@ -4,19 +4,13 @@ from openai import OpenAI
 from volcenginesdkarkruntime import Ark
 from Agent.utils.logging import log
 from Agent.Memory.Container import MemoryContainer
-from typing import Dict
-
-def get_response(*args, **kwargs):
-    pass
-
-def new_conversation(*args, **kwargs)->str:
-    return ""
-
-def switch_conversation(*args, **kwargs)->str:
-    return ""
-
-def delete_conversation(*args, **kwargs):
-    pass
+from typing import Dict, Union
+models = {
+    "deepseek": "deepseek-chat",
+    "deepseek-reasoner": "deepseek-reasoner",
+    "Doubao-think": "doubao-seed-1-6-thinking-250715",
+    "Doubao-lite": "doubao-seed-1-6-lite-251015"
+}
 
 # 从配置文件读取API配置
 with open('config.json', 'r') as f:
@@ -35,12 +29,12 @@ client = OpenAI(
 )
 
 
-def get_response_from_dsApi(input, Memory: MemoryContainer):
+def get_response_from_dsApi(input: str, Memory: MemoryContainer):
     
     input = str(input)
     Memory._add_user_message(input)
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model=models["deepseek"],
         messages=Memory(),
         stream=False,
     )
@@ -51,18 +45,15 @@ def get_response_from_dsApi(input, Memory: MemoryContainer):
     return result if result is not None else "Failed to generate response!"
 
 
-def get_response_from_Doubao(input, Memory: MemoryContainer):
+def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer):
     # 带图片的文本以List形式的参数给到input
-    if isinstance(input,dict):
-        input = input["text"]
-    
     Memory._add_user_message(input)
     client = Ark(
         api_key=doubao_api_key,
         base_url=doubao_base_url
     )
     completion = client.chat.completions.create(
-        model="doubao-seed-1-6-vision-250815",
+        model=models["Doubao-think"],
         messages=Memory(),
         stream=False,
     )

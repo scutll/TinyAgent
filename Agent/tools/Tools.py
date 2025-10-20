@@ -34,7 +34,7 @@ class ToolsContainer:
         if func_call not in self.tools:
             error_msg = f"Tool not found: {func_call}."
             # self.logger.error(error_msg)
-            return {"text": error_msg}
+            return error_msg
         
         func = self.tools[func_call]
         
@@ -42,7 +42,7 @@ class ToolsContainer:
         if not isinstance(func_args, dict):
             error_msg = f"Invalid arguments type: {type(func_args)}. Expected dict."
             self.logger.error(error_msg)
-            return {"text": error_msg}
+            return error_msg
         
         self.logger.info(f"Calling tool: {func_call}\n")
         
@@ -50,19 +50,19 @@ class ToolsContainer:
             # 调用工具函数
             result = func(**func_args)
             # self.logger.info(f"Tool {func_call} executed successfully")
-            return {"text": result}
+            return result
         except TypeError as e:
             # 参数类型错误
             error_msg = f"Parameter error in {func_call}: {str(e)}\n"
             self.logger.error(error_msg)
-            return {"text": error_msg}
+            return error_msg
         except KeyError as e:
             # 参数键错误
             error_msg = f"Missing parameter in {func_call}: {str(e)}\n"
             self.logger.error(error_msg)
-            return {"text": error_msg}
+            return error_msg
         except Exception as e:
             # 其他异常
             error_msg = f"Failed to run {func_call} with {func_args}: {str(e)}\n"
             self.logger.error(error_msg)
-            return {"text": error_msg}
+            return error_msg

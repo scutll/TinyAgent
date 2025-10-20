@@ -57,7 +57,7 @@ class AgentCore:
         
         print("Model reasoning: ")
         # response = get_response_from_dsApi(self.task, Memory)
-        input = {"text": self.task}
+        input = self.task
         response = api[self.UseModel](input, self.Memory)
 
         think, text, func_call, func_args = parse_response(response)
@@ -74,7 +74,10 @@ class AgentCore:
             #     continue
 
             if func_call == "ParseFailure":
-                observation = {"text": "你上次生成的回答格式有问题导致Agent无法成功解释，请查阅system_prompt，严格按照要求的输出格式重新输出"}
+                observation = """
+                你上次生成的回答格式有问题导致Agent无法成功解释，请查阅system_prompt，严格按照要求的输出格式重新输出:
+                \nTracestack:\n
+                """ + text
             else:
                 observation =  tools.call_func(func_call, func_args)
             if isinstance(observation, str) and func_call != dt.read_word_document.__name__:
@@ -83,6 +86,7 @@ class AgentCore:
             # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             print("Model reasoning: ")
             # response = get_response_from_dsApi(observation, Memory)
+            ## 这里豆包也出现了问题，observation是dict类型的，但api调用里面没有吧observation的text键对应内容提取出来。。。。。
             response = api[self.UseModel](observation, self.Memory)
 
             think, text, func_call, func_args = parse_response(response)

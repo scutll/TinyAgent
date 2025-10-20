@@ -99,9 +99,9 @@ def delete_file(filename: str):
     '''
     try:
         os.remove(filename)
-        return {"text": f"{filename} deleted!"}
+        return f"{filename} deleted!"
     except Exception as e:
-        return {"text": f"Error deleting {filename}: {e}"}
+        return f"Error deleting {filename}: {e}"
     
 
 
@@ -115,18 +115,18 @@ def delete_dir(directory: str):
     try:
         # 判断目录是否存在
         if not os.path.exists(directory):
-            return {"text": f"Error: {directory} does not exist."}
+            return f"Error: {directory} does not exist."
         
         # 判断是否是目录
         if not os.path.isdir(directory):
-            return {"text": f"Error: {directory} is not a directory."}
+            return f"Error: {directory} is not a directory."
 
         # 使用 shutil.rmtree() 递归删除目录及其内容
         shutil.rmtree(directory)
-        return {"text": f"{directory} and its contents deleted!"}
+        return f"{directory} and its contents deleted!"
     
     except Exception as e:
-        return {"text": f"Error deleting {directory}: {e}"}
+        return f"Error deleting {directory}: {e}"
 
 
 
@@ -134,7 +134,7 @@ def get_absolute_cur_path():
     """
     return the absolute path of current working directory
     """
-    return {"text": os.path.abspath(os.getcwd())}
+    return os.path.abspath(os.getcwd())
 
 
     

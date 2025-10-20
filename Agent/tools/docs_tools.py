@@ -48,7 +48,7 @@ def extract_info_from_docx_table(file_path):
     import zipfile
     
     if not os.path.exists(file_path):
-        return {"text": f"error in reading {file_path}: 文件不存在"}
+        return f"error in reading {file_path}: 文件不存在"
     
     try:
         # 直接尝试用宽容模式读取，忽略损坏的图片
@@ -57,7 +57,7 @@ def extract_info_from_docx_table(file_path):
         result = []
         with zipfile.ZipFile(file_path, 'r') as zip_ref:
             if 'word/document.xml' not in zip_ref.namelist():
-                return {"text": f"error in reading {file_path}: 不是有效的.docx文件"}
+                return f"error in reading {file_path}: 不是有效的.docx文件"
             
             xml_content = zip_ref.read('word/document.xml')
             root = ET.fromstring(xml_content)
@@ -73,14 +73,14 @@ def extract_info_from_docx_table(file_path):
                             result.append(cell_content.strip())
         
         if not result:
-            return {"text": f"error in reading {file_path}: 文档中没有找到表格内容"}
-        
-        return {"text": "\n".join(result)}
+            return f"error in reading {file_path}: 文档中没有找到表格内容"
+
+        return "\n".join(result)
     
     except zipfile.BadZipFile:
-        return {"text": f"error in reading {file_path}: 文件格式错误，不是有效的.docx文件"}
+        return f"error in reading {file_path}: 文件格式错误，不是有效的.docx文件"
     except Exception as e:
-        return {"text": f"error in reading {file_path}: {str(e)}"}
+        return f"error in reading {file_path}: {str(e)}"
 
 
 
