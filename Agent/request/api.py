@@ -29,12 +29,17 @@ client = OpenAI(
 )
 
 
-def get_response_from_dsApi(input: str, Memory: MemoryContainer):
+def get_response_from_dsApi(input: str, Memory: MemoryContainer, Model="deepseek-chat"):
+    """
+    supporting Models:\n
+    \t"deepseek-chat",\n
+    \t"deepseek-reasoner",
+    """
     
     input = str(input)
     Memory._add_user_message(input)
     response = client.chat.completions.create(
-        model=models["deepseek"],
+        model=Model,
         messages=Memory(),
         stream=False,
     )
@@ -45,7 +50,12 @@ def get_response_from_dsApi(input: str, Memory: MemoryContainer):
     return result if result is not None else "Failed to generate response!"
 
 
-def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer):
+def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer, Model="doubao-seed-1-6-thinking-250715"):
+    """
+    supporting models:\n
+    \t"doubao-seed-1-6-thinking-250715",
+    \t"doubao-seed-1-6-lite-251015"
+    """
     # 带图片的文本以List形式的参数给到input
     Memory._add_user_message(input)
     client = Ark(
@@ -53,11 +63,11 @@ def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer):
         base_url=doubao_base_url
     )
     completion = client.chat.completions.create(
-        model=models["Doubao-think"],
+        model=Model,
         messages=Memory(),
         stream=False,
     )
-    result = str(completion.choices[0].message.content)
+    result = str(completion.choices[0].message.content) # type: ignore
     Memory._add_assistant_message(str(result))
     log("(Doubao): " + result if result is not None else "Fail to generate response")
     log("======================================")

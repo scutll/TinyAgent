@@ -27,7 +27,7 @@ from Agent.prompts.tools_prompt import Finish_prompt
 tools = ToolsContainer()
 Tools = [it.inquery_user(),
          ft.create_file(), ft.read_file(), ft.search_replace(),
-         st.delete_dir(), st.delete_file(), st.get_absolute_cur_path(), st.tree_file(),
+         st.delete_dir(), st.delete_file(), st.get_absolute_cur_path(), st.tree_file(), st.execute_command(),
          dt.read_word_document(), dt.extract_info_from_docx_table(),
          wt.fetch_webpage_with_selector(), wt.fetch_webpage()]
 tools.load_tool(Tools)
@@ -36,13 +36,13 @@ tools.load_tool(Tools)
 # 初始化conversation(Memory)
 
 system_prompt = prompt_react + tools.prompt_all_tools + Finish_prompt
-print(system_prompt)
 
 
 class AgentCore:
-    def __init__(self, UseModel="Doubao"):
+    def __init__(self, model: str = "doubao-seed-1-6-thinking-250715"):
         self.task = None
-        self.UseModel = UseModel
+        self.model = model
+        self.UseModel = "Doubao" if "doubao" in model.lower() else "Deepseek"
         self.Memory = MemoryContainer()
         self.Memory._add_prompt(system_prompt)
 
