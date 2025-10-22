@@ -419,11 +419,11 @@ execute_command_prompt = """
 execute_command
 {
   "name": "execute_command",
-  "description": "执行安全的命令行命令，仅限于项目环境配置、包管理、环境查询和项目启动等操作。",
+  "description": "在受控白名单内执行系统命令。只读命令直接执行；可能修改文件/仓库/环境的命令会在工具内显式向用户二次确认（终端提示输入 yes）。",
   "parameters": {
     "properties": {
       "command": {
-        "description": "要执行的命令字符串。切勿包含任何危险操作。示例:  'npm install express', 'pip install openai', 'python example.py'",
+        "description": "要执行的命令字符串。不要在一条命令里使用命令链/管道(&&, ||, ;, |)。",
         "type": "string"
       }
     },
@@ -431,137 +431,45 @@ execute_command
     "type": "object"
   },
   
+  "returns": "命令的标准输出、标准错误与退出码。",
   
-  "returns": "命令行的运行结果以及输出",
-  
-  "allowed_commands": {
-    "package_management": [
-      "pip install/list/show/freeze/check - Python包管理(仅限安装、查看、检查)",
-      "poetry install/update/show/env/run - Poetry包管理",
-      "conda install/list/env list/activate/info - Conda环境管理",
-      "npm install/ci/list/outdated/audit/start/run - Node.js包管理",
-      "yarn install/list/outdated/start/run - Yarn包管理",
-      "pnpm install/list/outdated/start/run - PNPM包管理"
+  "policy": {
+    "直接执行_只读命令": [
+      "查询命令：dir/ls/type/cat/findstr/grep/tree, which/where/echo, hostname/whoami/systeminfo, ps/tasklist/netstat",
+      "包管理只读：pip|pip3|poetry|conda|npm|yarn|pnpm 的 list/show/freeze/check/info/search/outdated/audit/view",
+      "Git只读：status/log/diff/branch/remote/config/show/rev-parse/ls-files/describe/blame"
     ],
-    "project_startup": [
-      "python -m <module> - 运行Python模块",,
-      "python <script.py> - 运行Python脚本",
-      "node <script.js> - 运行Node.js脚本",
-      "npm run serve - 运行npm脚本",
-      "yarn start/run - 启动yarn项目"
+    "需用户确认_修改类命令": [
+      "文件操作：copy|cp|xcopy|robocopy, move|mv|rename|ren, mkdir|md, rmdir|rd, del|rm",
+      "重定向写入：> 或 >>",
+      "运行脚本：python|python3|node <script/args>（可能修改文件或环境）",
+      "包管理变更：install/update/remove/create/publish 等",
+      "Git写操作：add/commit/push/pull/merge/rebase/checkout/clone 等"
     ],
-    "environment_query": [
-      "python --version - 查看Python版本",
-      "node --version / npm --version - 查看Node版本",
-      "pip --version - 查看pip版本",
-      "which <command> / where <command> - 查找命令位置(Unix/Windows)",
-      "echo <text> - 输出文本",
-      "hostname - 查看主机名",
-      "whoami - 查看当前用户",
-      "systeminfo - 查看系统信息(Windows)"
-    ],
-    "git_readonly": [
-      "git status - 查看Git状态",
-      "git log - 查看提交历史",
-      "git diff - 查看差异",
-      "git branch - 查看分支",
-      "git remote -v - 查看远程仓库",
-      "git config --list - 查看配置"
-    ],
-    "process_management": [
-      "ps aux / ps -ef - 查看进程列表(Unix)",
-      "tasklist - 查看进程列表(Windows)",
-      "netstat -ano - 查看网络连接和端口占用"
+    "永久禁止_高危命令": [
+      "命令链与管道：&&, ||, ;, |",
+      "系统级危险操作：sudo/su, shutdown/reboot/poweroff/halt, format/fdisk/mkfs/diskpart"
     ]
   },
-  
-  "forbidden_commands": {
-    "file_operations": [
-      "rm/del - 删除文件",
-      "rmdir/rd - 删除目录",
-      "mv/move - 移动/重命名文件",
-      "rename/ren - 重命名文件",
-      "mkdir/md - 创建目录",
-      "touch - 创建空文件"
-    ],
-    "dangerous_operations": [
-      "chmod/chown - 修改权限/所有者",
-      "sudo/su - 提升权限",
-      "shutdown/reboot/init - 关机/重启",
-      "systemctl/service - 系统服务管理",
-      "format/fdisk/mkfs - 格式化/分区操作"
-    ],
-    "git_write_operations": [
-      "git push - 推送到远程仓库",
-      "git commit - 提交更改",
-      "git add - 添加文件到暂存区",
-      "git rm - 删除文件",
-      "git clone - 克隆仓库",
-      "git pull/fetch/merge - 拉取/合并代码"
-    ],
-    "command_chains": [
-      "&& - 命令链接(与)",
-      "|| - 命令链接(或)",
-      "; - 命令分隔符",
-      "| - 管道操作"
-    ],
-    "file_redirection": [
-      "> - 文件覆盖重定向(允许 >> 追加重定向)"
-    ]
-  },
-  
-  "safety_warnings": [
-    "所有命令在执行前都会经过严格的安全检查，不符合规则的命令会被直接拒绝",
-    "绝对禁止任何文件系统的增删改移动操作，包括但不限于 rm/del/mv/copy/mkdir 等",
-    "绝对禁止任何可能导致系统危险的命令，如 sudo/shutdown/chmod 等",
-    "Git只允许只读操作(status/log/diff等)，禁止任何写操作(push/commit/add等)",
-    "不允许使用命令链(&& || ; |)，必须逐条执行命令",
-    "不允许使用 > 覆盖重定向，防止意外覆盖文件(允许使用 >> 追加)",
-    "pip/npm等包管理工具只允许 install/list/show 等安全操作",
-    "Python执行只允许运行模块(-m)或明确的.py文件",
-    "命令执行有60秒超时限制，超时会自动终止",
-    "所有命令都在当前工作目录(cwd)中执行"
-  ],
   
   "usage_tips": [
-    "在 response 中明确说明为什么需要执行该命令，预期的结果是什么",
-    "涉及环境安装等的非纯查询命令应先向用户请示是否执行，切勿擅自修改用户配置环境"
-    "对于一些不影响环境的查询命令，可以不通过用户许可自行执行"
-    "对于包安装操作，建议先检查包是否已安装(pip list/npm list)",
-    "对于项目启动命令，应确保项目配置文件存在且正确",
-    "如果命令失败，应仔细分析标准错误输出(stderr)中的错误信息",
-    "对于环境查询命令，可以用于确认环境配置是否正确",
-    "建议先使用查询命令(如 pip list)确认当前状态，再决定是否需要安装",
-    "Git查询命令可用于了解代码仓库状态，但不能修改代码",
-    "命令执行可能需要一定时间，应在 think 中评估是否会超时",
-    "若命令需要用户交互(如确认输入)，会导致命令挂起，应避免此类命令"
+    "务必在 think 中思考使用该命令的原因以及用法，还有可能带来的后果或者风险"
+    "务必在 response 中说明为什么需要执行该命令及预期结果。"
+    "应将多条命令拆分逐条执行；必要时先用只读命令探查现状。",
+    "工具内部设有审查和用户确认机制，一般你不需要在运行命令前提醒用户，但若你认为当前命令执行会给用户带来不可逆风险，且该命令应该被运行，你也可以先使用inquery_user工具向用户进行询问确认",
+    "若命令失败，应仔细分析返回的错误信息",
+    "使用环境安装配置类的命令前应考虑是否会破坏当前环境",
+    "应尽量避免引起用户交互的命令如 \' python \'(会引起用户交互界面)",
+    ""
   ],
   
   "examples": [
-    {
-      "command": "pip list",
-      "description": "列出已安装的Python包"
-    },
-    {
-      "command": "npm install express",
-      "description": "安装Node.js的express包"
-    },
-    }
-  ],
-  
-  "rejected_examples": [
-    {
-      "command": "rm -rf docs",
-      "reason": "包含禁止的文件删除命令 rm"
-    },
-    {
-      "command": "pip install numpy && rm test.py",
-      "reason": "不允许命令链 && 且包含危险命令 rm"
-    },
-    {
-      "command": "echo 'test' > file.txt",
-      "reason": "不允许使用 > 覆盖文件"
-    },
+    {"command": "git status", "note": "只读，直接执行"},
+    {"command": "dir", "note": "只读，直接执行"},
+    {"command": "pip list", "note": "只读，直接执行"},
+    {"command": "git commit -m 'msg'", "note": "写操作，需用户在终端输入 yes 确认"},
+    {"command": "cp a.txt b.txt", "note": "文件写操作，需用户确认"},
+    {"command": "pip install requests", "note": "修改环境，需用户确认"}
   ]
 }
 ---
