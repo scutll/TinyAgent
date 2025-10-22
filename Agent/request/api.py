@@ -3,13 +3,13 @@ import httpx
 from openai import OpenAI
 from volcenginesdkarkruntime import Ark
 from Agent.utils.logging import log
-from Agent.Memory.Container import MemoryContainer
+from Agent.Memory.container import MemoryContainer
 from typing import Dict, Union
 models = {
     "deepseek": "deepseek-chat",
     "deepseek-reasoner": "deepseek-reasoner",
     "Doubao-think": "doubao-seed-1-6-thinking-250715",
-    "Doubao-lite": "doubao-seed-1-6-lite-251015"
+    "Doubao-flash": "doubao-seed-1-6-flash-250615"
 }
 
 # 从配置文件读取API配置
@@ -54,7 +54,7 @@ def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer, M
     """
     supporting models:\n
     \t"doubao-seed-1-6-thinking-250715",
-    \t"doubao-seed-1-6-lite-251015"
+    \t"doubao-seed-1-6-flash-250615"
     """
     # 带图片的文本以List形式的参数给到input
     Memory._add_user_message(input)

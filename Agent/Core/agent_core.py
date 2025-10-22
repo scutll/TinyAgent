@@ -10,7 +10,8 @@ from Agent.prompts.tools_prompt import *
 # 创建日志目录和文件
 os.makedirs("logs", exist_ok=True)
 
-from Agent.Memory.Container import MemoryContainer
+from Agent.Memory.container import MemoryContainer
+from Agent.Memory.compression import memory_compress__
 from Agent.request.api import *
 from Agent.utils.parser import parse_response
 from Agent.utils.logging import log
@@ -35,7 +36,8 @@ tools.load_tool(Tools)
 
 # 初始化conversation(Memory)
 
-system_prompt = prompt_react + tools.prompt_all_tools + Finish_prompt
+system_prompt = prompt_react 
+all_tools_prompt = tools.prompt_all_tools + Finish_prompt
 
 
 class AgentCore:
@@ -43,16 +45,29 @@ class AgentCore:
         self.task = None
         self.model = model
         self.UseModel = "Doubao" if "doubao" in model.lower() else "Deepseek"
+        
         self.Memory = MemoryContainer()
-        self.Memory._add_prompt(system_prompt)
+        self.Memory._add_system_prompt(system_prompt)
+        self.Memory._add_tool_prompt(tool_prompt=all_tools_prompt)
+        
 
     def set_task(self, task: str):
         self.task = task
         
-    def reset_memory__(self):
+    def reset_conversation__(self):
         self.Memory.reset__()
-        self.Memory._add_prompt(system_prompt)
-        print("memory reset!")
+        self.Memory._add_system_prompt(system_prompt)
+        print("conversation reset!")
+        
+    def compress_context__(self):
+        print(len(self.Memory.tool_prompt["content"]), len(self.Memory.system_prompt["content"]), len(self.Memory.conversation))
+        compressed_context = memory_compress__(self.Memory)
+        self.Memory.reset__()
+        self.Memory._add_tool_prompt(all_tools_prompt)
+        self.Memory._add_system_prompt(system_prompt)
+        self.Memory._add_assistant_message(compressed_context)
+        
+        
 
     def run(self):
         if self.task is None:
@@ -69,7 +84,7 @@ class AgentCore:
         print('-' * 27, "\nmy think: ", think)
         print('-' * 27, "\nAssistant: ", text)
         print('-' * 27)
-        if func_call == "Finish":
+        if func_call == "Finish":            
             return
         
         
@@ -87,11 +102,13 @@ class AgentCore:
                 observation =  tools.call_func(func_call, func_args)
             if isinstance(observation, str) and func_call != dt.read_word_document.__name__:
                 log(message=f"(observation): \n{observation}")
+                
+            # 这里可以进行记忆压缩的操作，但难点是什么时候进行压缩，如果Agent正在进行任务没理由压缩记忆，所以需要Agent自行判断是否要进行压缩，或者在任务完成后可以进行压缩
             
-            # 这个observation可以以tool的身份返回，可以进行一下支持的修改，看看效果会不会好一点
             print("Model reasoning: ")
-            # response = get_response_from_dsApi(observation, Memory)
-            ## 这里豆包也出现了问题，observation是dict类型的，但api调用里面没有吧observation的text键对应内容提取出来。。。。。
+            
+            if isinstance(observation, str):
+                observation = f"observation after calling {func_call}:\n" + observation            
             response = api[self.UseModel](observation, self.Memory)
 
             think, text, func_call, func_args = parse_response(response)
@@ -103,5 +120,4 @@ class AgentCore:
             if func_call == "Finish":
                 break
         log("==================Finish Task====================")
-        
-        
+        self.compress_context__()
