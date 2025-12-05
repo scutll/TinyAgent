@@ -19,6 +19,10 @@ class MemoryContainer:
     def _add_user_message(self, message: Union[str, List], tool_role=False):
         self.conversation.append({"role": "tool" if tool_role else "user", "content": message})
         
+    def _pop_message(self):
+        if len(self.conversation):
+            self.conversation.pop()
+        
     def _add_assistant_message(self, message: str):
         self.conversation.append({"role": "assistant", "content": message})
         

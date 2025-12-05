@@ -14,7 +14,7 @@ from Agent.Memory.container import MemoryContainer
 from Agent.Memory.compression import memory_compress__
 from Agent.request.api import *
 from Agent.utils.parser import parse_response
-from Agent.utils.logging import log
+from Agent.utils.logging_ import log
 
 
 # 导入工具
@@ -78,13 +78,24 @@ class AgentCore:
         print("Model reasoning: ")
         # response = get_response_from_dsApi(self.task, Memory)
         input = self.task
+        log("task_start", category="agent", task=input, model=self.model)
         response = api[self.UseModel](input, self.Memory)
 
         think, text, func_call, func_args = parse_response(response)
+        log(
+            "llm_decision",
+            category="agent",
+            think=think,
+            response=text,
+            action=func_call,
+            action_input=func_args,
+        )
         print('-' * 27, "\nmy think: ", think)
         print('-' * 27, "\nAssistant: ", text)
         print('-' * 27)
-        if func_call == "Finish":            
+        if func_call == "Finish":
+            log("task_finish", category="agent", final_response=text)
+            log("==================Finish Task====================")
             return
         
         
@@ -99,9 +110,15 @@ class AgentCore:
                 \nTracestack:\n
                 """ + text
             else:
+                log("tool_call", category="agent", name=func_call, args=func_args)
                 observation =  tools.call_func(func_call, func_args)
             if isinstance(observation, str) and func_call != dt.read_word_document.__name__:
-                log(message=f"(observation): \n{observation}")
+                log(
+                    "tool_result",
+                    category="agent",
+                    name=func_call,
+                    result_preview=str(observation)
+                )
                 
             # 这里可以进行记忆压缩的操作，但难点是什么时候进行压缩，如果Agent正在进行任务没理由压缩记忆，所以需要Agent自行判断是否要进行压缩，或者在任务完成后可以进行压缩
             
@@ -112,12 +129,21 @@ class AgentCore:
             response = api[self.UseModel](observation, self.Memory)
 
             think, text, func_call, func_args = parse_response(response)
+            log(
+                "llm_decision",
+                category="agent",
+                think=think,
+                response=text,
+                action=func_call,
+                action_input=func_args,
+            )
             
             print("my think: ", think)
             print('-' * 27, "\nAssistant: ", text)
             print('-' * 27)
             
             if func_call == "Finish":
+                log("task_finish", category="agent", final_response=text)
                 break
         log("==================Finish Task====================")
-        self.compress_context__()
+        # self.compress_context__()

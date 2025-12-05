@@ -1,10 +1,11 @@
 import json
 import httpx
 from openai import OpenAI
+from pydantic import BaseModel, Field
 from volcenginesdkarkruntime import Ark
-from Agent.utils.logging import log
+from Agent.utils.logging_ import log
 from Agent.Memory.container import MemoryContainer
-from typing import Dict, Union
+from typing import Any, Dict, Union
 models = {
     "deepseek": "deepseek-chat",
     "deepseek-reasoner": "deepseek-reasoner",
@@ -35,16 +36,21 @@ def get_response_from_dsApi(input: str, Memory: MemoryContainer, Model="deepseek
     \t"deepseek-chat",\n
     \t"deepseek-reasoner",
     """
-    
-    input = str(input)
+
     Memory._add_user_message(input)
+    log("request", category="llm", model=Model, prompt_preview=input[:500])
     response = client.chat.completions.create(
         model=Model,
         messages=Memory(),
         stream=False,
     )
     result = response.choices[0].message.content
-    Memory._add_assistant_message(str(result))
+    log("response", category="llm", model=Model, content_preview=str(result)[:1000])
+
+    if result:
+        Memory._add_assistant_message(str(result))
+    else:
+        Memory._pop_message()  
     log("(deepseek): " + result if result is not None else "Fail to generate response")
     log("======================================")
     return result if result is not None else "Failed to generate response!"
@@ -62,17 +68,58 @@ def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer, M
         api_key=doubao_api_key,
         base_url=doubao_base_url
     )
+    log("request", category="llm", model=Model, prompt_preview=str(input)[:500])
     completion = client.chat.completions.create(
         model=Model,
         messages=Memory(),
         stream=False,
     )
     result = str(completion.choices[0].message.content) # type: ignore
-    Memory._add_assistant_message(str(result))
+    log("response", category="llm", model=Model, content_preview=result[:1000])
+    if result:
+        Memory._add_assistant_message(str(result))
+    else:
+        Memory._pop_message()  
     log("(Doubao): " + result if result is not None else "Fail to generate response")
     log("======================================")
+    
+    
     return result if result is not None else "Failed to generate response!"
 
+
+class agentOutputFields(BaseModel):
+    observation: str = Field(description="简单描述上一轮系统提供的信息，首轮为用户输入的摘要。")
+    think: str = Field(description="你的内部思考过程, 包括对observation的分析和下一步应该如何做")
+    response: str = Field( description="给用户的可见回答，简要说明情况或回答问题。")
+    action: str = Field(description="本轮要执行的工具名称，或 'Finish'。")
+    action_input: Dict[str, Any] = Field(default_factory=dict, description="传给工具的参数字典, 具体格式应该参照toolsyyyy，或最终回答内容。")
+
+def structured_response(input: str, Memory: MemoryContainer, Model="doubao-seed-1-6-thinking-250715"):
+    Memory._add_user_message(input)
+    log("structured_request", category="llm", model=Model, prompt_preview=input[:500])
+    client = OpenAI(
+        base_url='https://ark.cn-beijing.volces.com/api/v3',
+        api_key=doubao_api_key,
+    )
+    response = client.responses.parse(
+        model=Model, 
+        input=[
+            {
+                "role": "user",
+                "content": Memory()
+            }
+        ],
+        text_format=agentOutputFields
+    )
+    
+    result = response.output_parsed
+    log("structured_response", category="llm", model=Model, content_preview=str(result)[:1000])
+    if result:
+        Memory._add_assistant_message(str(result))
+    else:
+        Memory._pop_message()
+    
+    return result if result is not None else "Failed to generate response!"
 
 api = {
     "Doubao": get_response_from_Doubao,
