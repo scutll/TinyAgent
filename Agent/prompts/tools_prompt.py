@@ -1,65 +1,69 @@
 tree_file_prompt = """
 {
   "name": "tree_file",
-  "description": "以树形结构递归显示目录及其所有子目录和文件（类似 `tree` 命令）。此工具适用于全面了解项目结构、查找深层文件位置。",
+  "description": "Recursively list the entire directory tree (similar to the `tree` command) to understand project layout and locate deeply nested files.",
   "parameters": {
-    "properties": {
-    },
-    "required": [],
-    "type": "object"
+    "type": "object",
+    "properties": {},
+    "required": []
   },
-  "returns": "返回字符串，使用 `├──` 和 `└──` 等符号表示树形结构，递归展示目录下所有文件和子目录。异常情况会返回错误信息字符串。",
-  "usage_tips": [
-    "适用于需要了解完整目录结构的场景",
-    "对于大型项目，输出可能较长，应在 `think` 中评估是否需要使用此工具"
+  "returns": "Plain-text tree that uses characters such as `├──` and `└──`. Errors return a descriptive string.",
+  "safety_notes": [],
+  "usage_notes": [
+    "Useful before structural changes or when you need a quick mental map of the repo.",
+    "Large projects can generate long outputs—decide in `think` whether it is necessary."
   ]
 }
 """
 
+
 delete_file_prompt = """
 {
   "name": "delete_file",
-  "description": "删除指定的单个文件。此操作不可逆，应谨慎使用。",
+  "description": "Delete a single file permanently. This action cannot be undone.",
   "parameters": {
+    "type": "object",
     "properties": {
       "filename": {
-        "description": "要删除的文件名或路径。支持相对路径和绝对路径。必须是文件，不能是目录。",
-        "type": "string"
+        "type": "string",
+        "description": "Path to the file to delete (relative or absolute). Must point to a file, not a directory."
       }
     },
-    "required": ["filename"],
-    "type": "object"
+    "required": ["filename"]
   },
-  "returns": "成功时返回 \\"{filename} deleted!\\"；失败时返回 \\"Error deleting {filename}: <error_message>\\"。",
-  "safety_warnings": [
-    "删除操作不可逆，调用前必须在 `think` 中确认文件路径正确",
-    "建议先使用 `tree_file` 或 `read_file` 确认目标文件",
-    "对于重要文件，应在 `think` 中明确说明删除原因",
-    "不能用于删除目录（删除目录请使用 `delete_dir`）"
-  ]
+  "returns": "`{filename} deleted!` when successful, or `Error deleting {filename}: ...` on failure.",
+  "safety_notes": [
+    "Confirm the path with `tree_file` or `read_file` before deleting.",
+    "Explain the reason for deletion inside `think`.",
+    "Use `delete_dir` for folders instead of this tool."
+  ],
+  "usage_notes": []
 }
 """
+
+
 delete_dir_prompt = """
 {
   "name": "delete_dir",
-  "description": "递归删除整个目录及其所有内容（包括所有子目录和文件）。这是一个高风险操作，不可逆，使用时必须极其谨慎。",
+  "description": "Recursively delete a directory and everything inside. Extremely high-risk and irreversible.",
   "parameters": {
+    "type": "object",
     "properties": {
       "directory": {
-        "description": "要删除的目录路径。支持相对路径和绝对路径。必须是目录，不能是文件。",
-        "type": "string"
+        "type": "string",
+        "description": "Path to the directory to remove (relative or absolute)."
       }
     },
-    "required": ["directory"],
-    "type": "object"
+    "required": ["directory"]
   },
-  "returns": "成功时返回 \\"{directory} and its contents deleted!\\"；失败时返回错误描述（如目录不存在、不是目录、权限不足等）。",
-  "safety_warnings": [
-    "这是最危险的操作之一，删除不可恢复",
-    "调用前必须在 `think` 中进行严格验证",
-    "建议先使用 `tree_file` 查看目录内容，确认删除范围",
-    "对于根目录、上级目录、系统目录等敏感路径，必须拒绝操作",
-    "必要时应在 `response` 中要求用户明确确认"
+  "returns": "`{directory} and its contents deleted!` or a descriptive error string.",
+  "safety_notes": [
+    "Never run on root/system/parent directories.",
+    "Document the justification and expected impact in `think`.",
+    "Request explicit user confirmation for risky deletions."
+  ],
+  "usage_notes": [
+    "Inspect the directory with `tree_file` before removal."
   ]
 }
 """
@@ -68,181 +72,128 @@ delete_dir_prompt = """
 get_absolute_cur_path_prompt = """
 {
   "name": "get_absolute_cur_path",
-  "description": "获取当前工作目录的绝对路径。用于确认当前位置、构建绝对路径、调试路径问题。",
+  "description": "Return the absolute path of the agent's current working directory.",
   "parameters": {
+    "type": "object",
     "properties": {},
-    "required": [],
-    "type": "object"
+    "required": []
   },
-  "returns": "返回字符串，表示当前工作目录的绝对路径。",
-  "usage_tips": [
-    "在不确定当前位置时使用此工具",
-    "在执行相对路径操作前可先确认当前目录",
-    "有助于构建和验证文件的完整路径"
+  "returns": "Absolute path as a string.",
+  "safety_notes": [],
+  "usage_notes": [
+    "Run before constructing relative paths if you're unsure about the current location."
   ]
 }
 """
 
-    
+
 read_file_prompt = """
 {
   "name": "read_file",
-  "description": "读取指定文本文件的完整内容。此工具将文件内容作为字符串返回，适用于分析、修改或展示文件内容。调用此工具时，你有责任确保获取了完整的上下文。每次调用时应该：1) 评估查看的内容是否足以完成任务；2) 注意哪些部分未显示；3) 如果内容不足且可能在未显示部分，主动再次调用工具查看；4) 有疑问时，再次调用工具获取更多信息。",
+  "description": "Read the full contents of a UTF-8 text file. You are responsible for ensuring you collected enough context—call again if you need additional sections.",
   "parameters": {
+    "type": "object",
     "properties": {
       "path": {
-        "description": "要读取的文件路径。支持相对路径（相对于当前工作目录）和绝对路径。必须是文本文件。",
-        "type": "string"
+        "type": "string",
+        "description": "Path to the text file (relative to CWD or absolute)."
       }
     },
-    "required": ["path"],
-    "type": "object"
+    "required": ["path"]
   },
-  "returns": "成功时返回文件的完整文本内容（使用 UTF-8 编码读取）；失败时返回以 \\"error in reading {path}: \\" 开头的错误描述字符串（如文件不存在、权限不足、编码错误等）。",
-  "usage_tips": [
-    "适用于读取配置文件、源代码、日志、文档等文本格式文件",
-    "对于大文件应在 `think` 中评估是否需要分块处理或使用其他策略",
-    "读取前可先用 `tree_file` 确认文件存在",
-    "不适用于二进制文件（如图片、视频、可执行文件等）",
-    "确保获取完整上下文，避免遗漏关键信息"
+  "returns": "File contents as a string, or `error in reading {path}: ...` on failure.",
+  "safety_notes": [
+    "Do not use for binary files.",
+    "Avoid leaking secrets—summarize sensitive content instead of copying verbatim when responding to users."
+  ],
+  "usage_notes": [
+    "Preview structure with `tree_file` if the path is uncertain.",
+    "For large files, plan which sections you truly need."
   ]
 }
 """
 
 
-    
 search_replace_prompt = """
 {
   "name": "search_replace",
-  "description": "在文本文件中搜索并替换指定内容。支持全局替换（替换所有匹配项）或整体覆盖（当 `match` 为 null 时）。修改会立即写入文件，不可撤销。",
+  "description": "Search a text file for a string and replace it (all matches). If `match` is null, the entire file will be overwritten by `replace`.",
   "parameters": {
+    "type": "object",
     "properties": {
-      "path": {
-        "description": "要修改的文件路径。支持相对路径和绝对路径。文件必须存在且为文本文件。",
-        "type": "string"
-      },
-      "match": {
-        "description": "要搜索的字符串。所有匹配此字符串的地方都会被替换。如果值为 null，则用 replace 内容覆盖整个文件（谨慎使用）。",
-        "type": ["string", "null"]
-      },
-      "replace": {
-        "description": "替换后的新字符串。当 match 不为 null 时，所有匹配 match 的地方都会被替换为此字符串；当 match 为 null 时，此字符串将成为文件的全部内容。",
-        "type": "string"
-      }
+      "path": {"type": "string", "description": "Path to the file."},
+      "match": {"type": ["string", "null"], "description": "String to replace, or null to overwrite the whole file."},
+      "replace": {"type": "string", "description": "Replacement text."}
     },
-    "required": ["path", "match", "replace"],
-    "type": "object"
+    "required": ["path", "match", "replace"]
   },
-  "returns": "成功时返回修改后的文件完整内容（便于验证修改结果）；失败时返回以 \\"error in search_replace {path}: \\" 开头的错误描述字符串。",
-  "safety_warnings": [
-    "修改会直接写入文件，操作不可逆，调用前必须在 `think` 中确认修改的准确性",
-    "强烈建议先用 `read_file` 读取文件，确认 `match` 字符串存在且准确，避免误替换",
-    "对于复杂修改，应在 `think` 中说明修改策略并评估影响范围",
-    "`match` 为 null 时会覆盖整个文件，风险极高，需在 `think` 中明确记录",
-    "建议在 `search_replace` 调用后再次使用 `read_file` 确认修改结果"
+  "returns": "Updated file content, or `error in search_replace {path}: ...` on failure.",
+  "safety_notes": [
+    "Edits are persisted immediately—double-check before calling.",
+    "Explain your strategy in `think`, especially when `match` is null."
   ],
-  "usage_tips": [
-    "替换操作是全局的（所有匹配项都会被替换，而非仅第一个）",
-    "对于需要部分替换的场景，应确保 `match` 字符串足够具体且唯一",
-    "可以通过返回的新内容立即验证修改是否符合预期",
-    "适用于代码修改、配置更新、文本替换等场景",
-    "建议在 `search_replace` 调用后再次使用 `read_file` 确认修改结果"
+  "usage_notes": [
+    "Read the file first to ensure the `match` string exists and is unique.",
+    "Consider re-reading the file afterward to verify the change."
   ]
 }
 """
-
-
 
 
 create_file_prompt = """
 {
   "name": "create_file",
-  "description": "在指定目录中创建新文件并写入初始内容。如果目标目录不存在，会自动递归创建所需的目录结构。此工具不会覆盖已存在的文件。",
+  "description": "Create a brand-new file (without overwriting existing files) and write initial content. Parent directories are created automatically if missing.",
   "parameters": {
+    "type": "object",
     "properties": {
-      "path": {
-        "description": "要创建文件的目录路径。支持相对路径和绝对路径。若目录不存在，将自动递归创建。Example: ./Test",
-        "type": "string"
-      },
-      "file_name": {
-        "description": "要创建的文件名，必须包含扩展名（如 .py、.txt、.json 等）。文件名不应包含路径分隔符, 也不应该有目录前缀，而应该是单纯的文件名。Example: test.txt",
-        "type": "string"
-      },
-      "content": {
-        "description": "文件的初始内容。可以是空字符串（创建空文件）或包含任意文本内容。使用 UTF-8 编码写入。",
-        "type": "string"
-      }
+      "path": {"type": "string", "description": "Target directory (relative or absolute)."},
+      "file_name": {"type": "string", "description": "File name with extension (no path separators)."},
+      "content": {"type": "string", "description": "Initial UTF-8 content (can be empty)."}
     },
-    "required": ["path", "file_name", "content"],
-    "type": "object"
+    "required": ["path", "file_name", "content"]
   },
-  "returns": "成功时返回 \\"File created successfully: {full_path}\\"，显示创建文件的完整路径；失败时返回以 \\"error in creating file\\" 开头的错误描述字符串（如文件已存在、权限不足等）。",
-  "safety_warnings": [
-    "若目标文件已存在，工具会返回错误以防止意外覆盖现有文件",
-    "如需修改已存在的文件，应使用 `search_replace` 工具",
-    "目录路径会自动创建，调用前应在 `think` 中确认路径正确性，避免创建错误的目录结构",
-    "对于敏感目录（如系统目录、重要项目目录），应在 `think` 中进行额外验证",
-    "建议在 `create_file` 调用后再次使用 `read_file` 确认修改结果"
+  "returns": "`File created successfully: {full_path}` or an error string.",
+  "safety_notes": [
+    "Use `search_replace` for existing files—this tool refuses to overwrite.",
+    "Confirm the directory path is correct to avoid polluting the repo."
   ],
-  "usage_tips": [
-    "创建前可先用 `list_file` 或 `tree_file` 确认文件不存在，避免调用失败",
-    "适用于创建配置文件、源代码文件、文档、测试数据等",
-    "文件默认使用 UTF-8 编码，适合大多数文本文件",
-    "建议在 `create_file` 调用后再次使用 `read_file` 确认修改结果",
-    "如需创建多个文件，应分别调用此工具"
+  "usage_notes": [
+    "List the directory first if you're unsure whether the file already exists.",
+    "After creation, read the file to confirm contents when necessary."
   ]
 }
 """
-
 
 
 Finish_prompt = """
 {
   "name": "Finish",
-  "description": "标记任务完成或无法完成。使用此工具表示你已完成用户的请求，或经过充分尝试后确认任务无法完成。最终的总结和回复应该体现在 `response` 字段中。",
-  "parameters": {
-    "properties": {},
-    "required": [],
-    "type": "object"
-  },
-  "returns": "此工具不返回内容。调用后任务流程结束，`response` 中的内容作为最终答案展示给用户。",
-  "usage_when": [
-    "已经完成用户请求的所有步骤",
-    "已收集到足够信息可以给出完整答案",
-    "经过充分尝试后确认任务无法完成（需说明原因）",
-    "发现任务超出权限或存在安全风险（需说明拒绝原因）"
-  ],
-  "usage_tips": [
-    "`response` 应包含对任务完成情况的清晰总结",
-    "如果任务成功完成，应说明完成了什么、结果在哪里",
-    "如果任务失败，应说明尝试了什么、为何失败、可能的解决方案",
-    "最终答案应对用户友好、易于理解"
+  "description": "Signal that the task is complete or cannot be completed. The final explanation must live in the `response` field of the same round.",
+  "parameters": {"type": "object", "properties": {}, "required": []},
+  "returns": "No payload—conversation ends after this action.",
+  "safety_notes": [],
+  "usage_notes": [
+    "Use after fulfilling the requirements, or after explaining why the task is impossible / unsafe.",
+    "Summaries should mention what was done, where outputs live, and any follow-up needed."
   ]
 }
 """
 
 
-
-
 inquery_user_prompt = """
 {
   "name": "inquery_user",
-  "description": "在需要用户确认或补充关键信息时向用户发起交互式询问。适用于：高风险操作确认（如删除/覆盖）、不明确的用户意图澄清时的询问。",
-  "parameters": {
-    "properties": {
-    },
-    "required": [],
-    "type": "object"
-  },
-  "returns": "成功时返回用户的输入字符串；若读取输入失败，返回以 \\"Error reading user input:\\" 开头的错误描述字符串。",
-  "safety_warnings": [
-    "当LLM希望提问时，应该简单说明LLM想要获取的信息或许可，提示用户需要他输入信息",
-    "在执行高危操作前应文本确认（非仅 y/n 的模糊确认，若风险极高建议再次确认）"
+  "description": "Ask the user for clarification or explicit approval when intent is unclear or when an operation is high risk.",
+  "parameters": {"type": "object", "properties": {}, "required": []},
+  "returns": "User-provided text, or `Error reading user input: ...`.",
+  "safety_notes": [
+    "Explain exactly what information or permission you need.",
+    "Use before irreversible actions such as deletions, overwrites, or dangerous shell commands."
   ],
-  "usage_tips": [
-    "在进行不可逆操作（如 delete_file/delete_dir/search_replace 覆盖）,或执行一些可能引发危险的CMD命令的时候调用以获取用户明确许可",
-    "在用户意图(是否要修改某文件/是否要创建文件/目的)不够明确时调用,向用户询问必要的信息, 以避免工具误用或幻觉",
-    "当LLM希望提问时，应该简单说明LLM想要获取的信息或许可，提示用户需要他输入信息"
+  "usage_notes": [
+    "Keep questions focused—do not over-interrogate the user.",
+    "Record the reason for asking in `think` and summarize the user's answer in the next `observation`."
   ]
 }
 """
@@ -251,68 +202,46 @@ inquery_user_prompt = """
 fetch_webpage_prompt = """
 {
   "name": "fetch_webpage",
-  "description": "抓取网页内容并提取主要文本。此工具使用HTTP请求获取网页HTML，然后解析并清理文本内容，去除脚本、样式等无关元素，返回纯净的文本内容。适用于获取网页文章、新闻、文档等文本信息。",
+  "description": "Fetch a web page and return cleaned text (HTML stripped). Ideal for articles, blogs, and documentation.",
   "parameters": {
+    "type": "object",
     "properties": {
-      "url": {
-        "description": "要抓取的网页URL。必须是有效的HTTP或HTTPS网址。",
-        "type": "string"
-      }
+      "url": {"type": "string", "description": "HTTP/HTTPS URL to fetch."}
     },
-    "required": ["url"],
-    "type": "object"
+    "required": ["url"]
   },
-  "returns": "成功时返回网页的清理后文本内容；失败时返回以 \\"error in fetching webpage {url}: \\" 开头的错误描述字符串（如网络连接失败、URL无效、超时等）。",
-  "safety_warnings": [
-    "此工具会发起外部网络请求，可能涉及隐私和安全风险",
-    "仅用于抓取公开可访问的网页，避免访问敏感或受限内容",
-    "网络请求可能失败或超时，应在 `think` 中准备备用方案",
-    "对于重要数据，建议在 `think` 中验证URL的正确性和安全性"
+  "returns": "Clean text or `error in fetching webpage {url}: ...`.",
+  "safety_notes": [
+    "Only fetch publicly accessible content.",
+    "Network requests may fail or timeout—plan fallbacks."
   ],
-  "usage_tips": [
-    "Baidu搜索可能有爬虫验证，优先可以使用Wiki百科进行搜索",
-    "适用于获取新闻文章、博客内容、文档页面等文本信息",
-    "对于需要特定部分内容的网页，可使用 `fetch_webpage_with_selector` 工具",
-    "网络连接可能不稳定，建议在 `think` 中考虑重试机制",
-    "返回的文本已去除HTML标签和无关元素，适合直接分析",
-    "对于大型网页，输出可能较长，应在 `think` 中评估是否需要分块处理"
+  "usage_notes": [
+    "Use `fetch_webpage_with_selector` if you only need a specific section.",
+    "For very large pages, consider summarizing sections incrementally."
   ]
 }
 """
 
 
-
 fetch_webpage_with_selector_prompt = """
 {
   "name": "fetch_webpage_with_selector",
-  "description": "使用CSS选择器抓取网页特定部分的内容。此工具获取网页HTML后，使用指定的CSS选择器定位目标元素，只返回匹配元素的文本内容。适用于精确提取网页特定区域的内容，如文章正文、标题、列表等。",
+  "description": "Fetch a web page but only return text that matches a CSS selector (e.g., `article`, `.content`, `#main`).",
   "parameters": {
+    "type": "object",
     "properties": {
-      "url": {
-        "description": "要抓取的网页URL。必须是有效的HTTP或HTTPS网址。",
-        "type": "string"
-      },
-      "selector": {
-        "description": "CSS选择器，用于定位网页中的特定元素。例如：\\"article\\" 选择文章区域，\\".content\\" 选择class为content的元素，\\"#main\\" 选择id为main的元素。默认值为 \\"body\\"。",
-        "type": "string"
-      }
+      "url": {"type": "string", "description": "HTTP/HTTPS URL."},
+      "selector": {"type": "string", "description": "CSS selector to target (defaults to `body` if omitted)."}
     },
-    "required": ["url"],
-    "type": "object"
+    "required": ["url"]
   },
-  "returns": "成功时返回匹配选择器的元素文本内容；如果未找到匹配元素，返回 \\"No elements found with selector: {selector}\\"；失败时返回以 \\"error in fetching webpage {url}: \\" 开头的错误描述字符串。",
-  "safety_warnings": [
-    "此工具会发起外部网络请求，可能涉及隐私和安全风险",
-    "仅用于抓取公开可访问的网页，避免访问敏感或受限内容",
-    "选择器可能无法匹配到内容，应在 `think` 中准备备用选择器或方案",
-    "网络请求可能失败或超时，应在 `think` 中考虑重试机制"
+  "returns": "Text for matching elements, `No elements found with selector: {selector}` when empty, or a fetch error string.",
+  "safety_notes": [
+    "Same network considerations as `fetch_webpage`."
   ],
-  "usage_tips": [
-    "适用于精确提取网页特定部分的内容，如文章正文、评论区、导航菜单等",
-    "常见CSS选择器示例：\\"article\\"（文章）、\\".content\\"（内容区域）、\\"#main\\"（主区域）、\\"p\\"（段落）、\\"h1\\"（标题）",
-    "如果不确定选择器，可先用 `fetch_webpage` 获取完整内容分析结构",
-    "对于动态加载的内容，此工具可能无法获取，需要其他技术手段",
-    "建议在 `think` 中说明选择器的选择理由和预期目标"
+  "usage_notes": [
+    "Describe in `think` why the selector should capture the needed region.",
+    "If unsure about DOM structure, fetch the full page once to inspect."
   ]
 }
 """
@@ -321,68 +250,46 @@ fetch_webpage_with_selector_prompt = """
 read_word_document_prompt = """
 {
   "name": "read_word_document",
-  "description": "读取包含图片的Word文档,返回文本和图片的Base64编码内容,按顺序排列。此工具解析Word文档(.docx格式),提取其中的文本段落和嵌入图片,将图片转换为Base64编码,按照在文档中出现的顺序返回。适用于需要同时处理文档文本和图片内容的场景。",
+  "description": "Parse a .docx file and return an ordered list of text runs plus Base64-encoded images in the order they appear.",
   "parameters": {
+    "type": "object",
     "properties": {
-      "path": {
-        "description": "Word文档的文件路径。支持相对路径(相对于当前工作目录)和绝对路径。必须是.docx格式的Word文档。",
-        "type": "string"
-      }
+      "path": {"type": "string", "description": "Path to the .docx file."}
     },
-    "required": ["path"],
-    "type": "object"
+    "required": ["path"]
   },
-  "returns": "成功时返回列表,包含文档内容的有序组合。失败时返回以 \\"error in reading {path}: \\" 开头的错误描述字符串(如文件不存在、格式错误、权限不足等)。",
-  "safety_warnings": [
-    "仅支持.docx格式的Word文档,不支持旧版.doc格式",
-    "大型文档或包含大量高分辨率图片的文档可能导致返回数据量很大",
-    "图片以Base64编码返回,会占用较多内存和token",
-    "应在 `think` 中评估文档大小和复杂度,避免处理超大文件"
+  "returns": "List mixing text and Base64 image payloads, or `error in reading {path}: ...`.",
+  "safety_notes": [
+    "Large documents with many images can produce huge outputs—plan accordingly.",
+    "Only .docx is supported."
   ],
-  "usage_tips": [
-    "适用于需要提取Word文档中文本和图片的场景,如文档分析、内容提取、格式转换等",
-    "返回的内容按文档中出现顺序排列,保持原始结构",
-    "图片已转换为Base64编码,可直接用于显示或进一步处理",
-    "读取前可先用 `tree_file` 确认文件存在且为.docx格式",
-    "对于只需要文本内容的场景,建议使用其他更轻量的文本提取工具",
-    "建议在 `think` 中说明需要从文档中提取哪些信息",
-    "如果读取文件信息比较少，可能是因为文档是表格形式的，可以使用extract_info_from_docx_table来重新读取"
+  "usage_notes": [
+    "Mention in `think` which sections you need to extract.",
+    "For table-heavy docs, consider `extract_info_from_docx_table`."
   ]
 }
 """
 
 
-
 extract_info_from_docx_table_prompt = """
 {
   "name": "extract_info_from_docx_table",
-  "description": "提取Word文档(.docx格式)中所有表格的单元格内容,返回纯文本字符串。此工具专门用于解析包含表格的Word文档,自动遍历所有表格并提取每个单元格的文本内容,去除空白字符后按顺序拼接成字符串,每个单元格内容占一行。适用于表单、申请表、数据表等结构化文档的信息提取场景。",
+  "description": "Extract every populated cell from all tables inside a .docx file, returning one line per cell in reading order.",
   "parameters": {
+    "type": "object",
     "properties": {
-      "file_path": {
-        "description": "Word文档的文件路径。支持相对路径(相对于当前工作目录)和绝对路径。必须是.docx格式的Word文档,且文档中包含表格内容。",
-        "type": "string"
-      }
+      "file_path": {"type": "string", "description": "Path to the .docx file that contains tables."}
     },
-    "required": ["file_path"],
-    "type": "object"
+    "required": ["file_path"]
   },
-  "returns": "成功时返回字符串,包含文档中所有表格的单元格内容,每个非空单元格内容占一行,按表格顺序和单元格位置(从左到右、从上到下)依次排列。失败时抛出FileNotFoundError异常并返回错误描述字符串(如\\"文件不存在: {file_path}\\"),或因文件格式错误、权限不足等原因导致的其他异常。",
-  "safety_warnings": [
-    "仅支持.docx格式的Word文档,不支持旧版.doc格式",
-    "只提取表格内容,不包含文档中的普通段落文本",
-    "会自动过滤空单元格,只返回有内容的单元格",
-    "对于包含大量表格或复杂表格结构的文档,返回的字符串可能很长",
-    "不保留表格的格式信息(如合并单元格、边框、颜色等),只提取纯文本内容"
+  "returns": "Plain-text list of cell contents or a descriptive error string.",
+  "safety_notes": [
+    "Ignores non-table text.",
+    "Large tables can return very long strings—summarize if needed."
   ],
-  "usage_tips": [
-    "适用于提取入会申请表、信息登记表、数据统计表等包含表格的Word文档",
-    "返回的是简洁的纯文本格式,每行一个单元格内容,便于后续解析和处理",
-    "对于需要保留表格结构信息的场景,建议使用其他更完整的表格解析工具",
-    "提取后的内容可以直接用于文本分析、信息提取、数据录入等场景",
-    "建议在 `think` 中说明需要从表格中提取哪些字段或信息",
-    "如果文档包含多个表格,所有表格内容会按顺序合并返回",
-    "单元格内的换行符会被保留,可能导致某些内容跨多行显示"
+  "usage_notes": [
+    "State which fields you are hunting for so reviewers know why the tool was used.",
+    "Use when you need structured data rather than the entire document body."
   ]
 }
 """
@@ -391,57 +298,51 @@ extract_info_from_docx_table_prompt = """
 execute_command_prompt = """
 {
   "name": "execute_command",
-  "description": "在受控白名单内执行系统命令。只读命令直接执行；可能修改文件/仓库/环境的命令会在工具内显式向用户二次确认（终端提示输入 yes）。",
+  "description": "Run a single shell command from a curated allowlist. Read-only commands run immediately; commands that modify files/envs trigger an in-terminal confirmation step.",
   "parameters": {
+    "type": "object",
     "properties": {
       "command": {
-        "description": "要执行的命令字符串。不要在一条命令里使用命令链/管道(&&, ||, ;, |)。",
-        "type": "string"
+        "type": "string",
+        "description": "Command without chaining or piping (no &&, ||, ;, |)."
       }
     },
-    "required": ["command"],
-    "type": "object"
+    "required": ["command"]
   },
-  "returns": "命令的标准输出、标准错误与退出码。",
+  "returns": "Combined stdout/stderr plus the exit code.",
   "policy": {
-    "直接执行_只读命令": [
-      "查询命令：dir/ls/type/cat/findstr/grep/tree, which/where/echo, hostname/whoami/systeminfo, ps/tasklist/netstat",
-      "包管理只读：pip|pip3|poetry|conda|npm|yarn|pnpm 的 list/show/freeze/check/info/search/outdated/audit/view",
-      "Git只读：status/log/diff/branch/remote/config/show/rev-parse/ls-files/describe/blame"
+    "read_only": [
+      "Filesystem queries: dir/ls/tree/type/cat/findstr/grep/which/where/echo",
+      "System info: hostname/whoami/systeminfo/tasklist/ps/netstat",
+      "Package managers (list/show/freeze/search/outdated) for pip/conda/npm/yarn/pnpm",
+      "Git read-only: status/log/diff/branch/remote/show/rev-parse/ls-files/describe/blame"
     ],
-    "需用户确认_修改类命令": [
-      "文件操作：copy|cp|xcopy|robocopy, move|mv|rename|ren, mkdir|md, rmdir|rd, del|rm",
-      "重定向写入：> 或 >>",
-      "运行脚本：python|python3|node <script/args>（可能修改文件或环境）",
-      "包管理变更：install/update/remove/create/publish 等",
-      "Git写操作：add/commit/push/pull/merge/rebase/checkout/clone 等"
+    "needs_confirmation": [
+      "File edits: copy/move/rename/mkdir/rmdir/del/rm",
+      "Redirections using > or >>",
+      "Script execution: python/node <script>",
+      "Package installs/updates/removals",
+      "Git mutations: add/commit/push/pull/merge/rebase/checkout/clone"
     ],
-    "永久禁止_高危命令": [
-      "命令链与管道：&&, ||, ;, |",
-      "系统级危险操作：sudo/su, shutdown/reboot/poweroff/halt, format/fdisk/mkfs/diskpart"
+    "forbidden": [
+      "Command chains or pipes (&&, ||, ;, |)",
+      "Privilege or system operations: sudo/su/shutdown/reboot/poweroff/format/diskpart"
     ]
   },
-  "usage_tips": [
-    "务必在 think 中思考使用该命令的原因以及用法，还有可能带来的后果或者风险",
-    "务必在 response 中说明为什么需要执行该命令及预期结果。",
-    "应将多条命令拆分逐条执行；必要时先用只读命令探查现状。",
-    "工具内部设有审查和用户确认机制，一般你不需要在运行命令前提醒用户，但若你认为当前命令执行会给用户带来不可逆风险，且该命令应该被运行，你也可以先使用inquery_user工具向用户进行询问确认",
-    "若命令失败，应仔细分析返回的错误信息",
-    "使用环境安装配置类的命令前应考虑是否会破坏当前环境",
-    "应尽量避免引起用户交互的命令如 ' python '(会引起用户交互界面)",
-    ""
+  "safety_notes": [
+    "Explain in `think` why the command is required and what risk mitigation you applied.",
+    "Prefer investigative commands before making changes.",
+    "Avoid commands that launch interactive REPLs."
   ],
-  "examples": [
-    {"command": "git status", "note": "只读，直接执行"},
-    {"command": "dir", "note": "只读，直接执行"},
-    {"command": "pip list", "note": "只读，直接执行"},
-    {"command": "git commit -m 'msg'", "note": "写操作，需用户在终端输入 yes 确认"},
-    {"command": "cp a.txt b.txt", "note": "文件写操作，需用户确认"},
-    {"command": "pip install requests", "note": "修改环境，需用户确认"}
+  "usage_notes": [
+    "Split multi-step workflows into separate calls.",
+    "Summarize the command's purpose in `response` so the user knows what to expect.",
+    "Inspect stderr if the command fails and adjust accordingly."
   ]
 }
 """
 
+
 if __name__ == "__main__":
     import json
-    print((json.loads(execute_command_prompt)).keys())
+    print(json.loads(execute_command_prompt).keys())

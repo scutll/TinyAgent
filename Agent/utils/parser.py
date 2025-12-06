@@ -1,23 +1,29 @@
 import json
 from typing import Tuple, Union
 from Agent.utils.logging_ import log
-def parse_response(response: str)->Tuple[str, str, str, dict]:
-    try:
-        ex_response = extract_JSON_block(response)            
-        data = json.loads(ex_response)
-        # check keys
-        required_ = ["think", "response", "action", "action_input"]
-        for required in required_:
-            if required not in data.keys():
-                raise KeyError(f"key {required} required but not in your answer!")
-            
-            
-    except Exception as e:
-        log(str(e))
-        log("Error: failed to parse response=================\n" + response)
-        return "", str(e) + "\n" + response, "ParseFailure", dict()
+from Agent.request.api import agentOutputFields
+def parse_response(response: Union[str, agentOutputFields])->Tuple[str, str, str, dict]:
+    data = response
+    if isinstance(response, agentOutputFields):
+        return response.think, response.response, response.action, response.action_input
+    
+    else:
+        try:
+            ex_response = extract_JSON_block(response)            
+            data = json.loads(ex_response)
+            # check keys
+            required_ = ["think", "response", "action", "action_input"]
+            for required in required_:
+                if required not in data.keys():
+                    raise KeyError(f"key {required} required but not in your answer!")
+                
+                
+        except Exception as e:
+            log(str(e))
+            log("Error: failed to parse response=================\n" + response)
+            return "", str(e) + "\n" + response, "ParseFailure", dict()
 
-    return data["think"], data["response"], data["action"], data["action_input"]
+        return data["think"], data["response"], data["action"], data["action_input"]
     
     
 # 应对偶尔错误的mdJSON格式，可以从中提取JSON内容而不用再让LLM再次生成

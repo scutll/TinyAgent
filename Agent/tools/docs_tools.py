@@ -9,7 +9,7 @@ class read_word_document(Tool_):
     def __init__(self):
         super().__init__(read_word_document_prompt)
         
-    def __call__(self, path: str) -> List[Dict]:
+    def __call__(self, path: str, openai_schema=False) -> List[Dict]:
         """
         读取包含图片的Word文档,返回文本和图片的Base64编码内容,按顺序排列。
 
@@ -26,7 +26,10 @@ class read_word_document(Tool_):
         for paragraph in doc.paragraphs:
             # 添加段落文本
             if paragraph.text.strip():
-                contents.append({"type": "text", "text": paragraph.text})
+                if openai_schema:
+                    contents.append({"type": "input_text", "text": paragraph.text})
+                else:
+                    contents.append({"type": "text", "text": paragraph.text})
             
             # 检查段落中的图片
             for run in paragraph.runs:
@@ -39,7 +42,12 @@ class read_word_document(Tool_):
                             image_format = image_part.content_type.split('/')[-1]
                             base64_image = base64.b64encode(image_bytes).decode('utf-8')
                             image_url = f"data:image/{image_format};base64,{base64_image}"
-                            contents.append({"type": "image_url", "image_url": {"url": image_url}})
+                            if openai_schema:
+                                contents.append({"type": "input_image", "image_url": {"url": image_url}})
+                            else:
+                                contents.append({"type": "image_url", "image_url": {"url": image_url}})
+                            from Agent.Core.agent_core import set_doc_with_imgs
+                            set_doc_with_imgs()
         
         return contents
         

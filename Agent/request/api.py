@@ -1,5 +1,4 @@
 import json
-import httpx
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from volcenginesdkarkruntime import Ark
@@ -38,14 +37,14 @@ def get_response_from_dsApi(input: str, Memory: MemoryContainer, Model="deepseek
     """
 
     Memory._add_user_message(input)
-    log("request", category="llm", model=Model, prompt_preview=input[:500])
+    log(f"[LLM request][{Model}]\n{input[:100]}...")
     response = client.chat.completions.create(
         model=Model,
         messages=Memory(),
         stream=False,
     )
     result = response.choices[0].message.content
-    log("response", category="llm", model=Model, content_preview=str(result)[:1000])
+    log(f"[LLM response][{Model}]\n{result}")
 
     if result:
         Memory._add_assistant_message(str(result))
@@ -68,14 +67,14 @@ def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer, M
         api_key=doubao_api_key,
         base_url=doubao_base_url
     )
-    log("request", category="llm", model=Model, prompt_preview=str(input)[:500])
+    log(f"[LLM request][{Model}]\n{input[:100]}...")
     completion = client.chat.completions.create(
         model=Model,
         messages=Memory(),
         stream=False,
     )
     result = str(completion.choices[0].message.content) # type: ignore
-    log("response", category="llm", model=Model, content_preview=result[:1000])
+    log(f"[LLM response][{Model}]\n{result}")
     if result:
         Memory._add_assistant_message(str(result))
     else:
@@ -92,28 +91,23 @@ class agentOutputFields(BaseModel):
     think: str = Field(description="你的内部思考过程, 包括对observation的分析和下一步应该如何做")
     response: str = Field( description="给用户的可见回答，简要说明情况或回答问题。")
     action: str = Field(description="本轮要执行的工具名称，或 'Finish'。")
-    action_input: Dict[str, Any] = Field(default_factory=dict, description="传给工具的参数字典, 具体格式应该参照toolsyyyy，或最终回答内容。")
+    action_input: Dict[str, Any] = Field(default_factory=dict, description="传给工具的参数字典, 具体格式应该参照toolsyyyy, 或最终回答内容。")
 
-def structured_response(input: str, Memory: MemoryContainer, Model="doubao-seed-1-6-thinking-250715"):
+def structured_response(input: Union[list, str], Memory: MemoryContainer, Model="doubao-seed-1-6-thinking-250715"):
     Memory._add_user_message(input)
-    log("structured_request", category="llm", model=Model, prompt_preview=input[:500])
+    log(f"[structured request][{Model}]\n{input}")
     client = OpenAI(
         base_url='https://ark.cn-beijing.volces.com/api/v3',
         api_key=doubao_api_key,
     )
     response = client.responses.parse(
         model=Model, 
-        input=[
-            {
-                "role": "user",
-                "content": Memory()
-            }
-        ],
+        input=Memory(),
         text_format=agentOutputFields
     )
     
     result = response.output_parsed
-    log("structured_response", category="llm", model=Model, content_preview=str(result)[:1000])
+    log(f"[structured response][{Model}]\n{result}")
     if result:
         Memory._add_assistant_message(str(result))
     else:

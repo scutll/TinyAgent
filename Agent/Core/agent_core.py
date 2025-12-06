@@ -3,7 +3,7 @@
 # the agent_core is deployed in user's system, and the Model deployed in the server. agent_core uploads input and gets reply streamly from server
 
 import os
-from Agent.request.api import api
+from Agent.request.api import api,structured_response, agentOutputFields
 from Agent.prompts.prompt_react import prompt_react
 from Agent.prompts.tools_prompt import *
 
@@ -32,7 +32,12 @@ Tools = [it.inquery_user(),
          dt.read_word_document(), dt.extract_info_from_docx_table(),
          wt.fetch_webpage_with_selector(), wt.fetch_webpage()]
 tools.load_tool(Tools)
+docs_with_imgs = False  # 当read_word_document读取的内容有image时设为true，这时禁止使用structured output
 
+def set_doc_with_imgs():
+    global docs_with_imgs
+    docs_with_imgs = True
+    log("[Warning] Docs extracted with images! Structured LLM Output prohibited!")
 
 # 初始化conversation(Memory)
 
@@ -75,26 +80,22 @@ class AgentCore:
         # self.cur_conv = new_conversation()
         # response = get_response(self.task, self.cur_conv)
         
-        print("Model reasoning: ")
         # response = get_response_from_dsApi(self.task, Memory)
         input = self.task
-        log("task_start", category="agent", task=input, model=self.model)
-        response = api[self.UseModel](input, self.Memory)
+        log(f"[task_start] model={self.model}\n{input}")
+        
+        if docs_with_imgs:
+            response = api["Doubao"](input, self.Memory)
+        else:
+            response = structured_response(input, self.Memory)
 
         think, text, func_call, func_args = parse_response(response)
-        log(
-            "llm_decision",
-            category="agent",
-            think=think,
-            response=text,
-            action=func_call,
-            action_input=func_args,
-        )
-        print('-' * 27, "\nmy think: ", think)
+        log(str(response))
+        # print('-' * 27, "\nmy think: ", think)
         print('-' * 27, "\nAssistant: ", text)
         print('-' * 27)
         if func_call == "Finish":
-            log("task_finish", category="agent", final_response=text)
+            log(f"[task_finish]\n{text}")
             log("==================Finish Task====================")
             return
         
@@ -110,40 +111,29 @@ class AgentCore:
                 \nTracestack:\n
                 """ + text
             else:
-                log("tool_call", category="agent", name=func_call, args=func_args)
+                print(f"-> calling tool: {func_call}")
                 observation =  tools.call_func(func_call, func_args)
             if isinstance(observation, str) and func_call != dt.read_word_document.__name__:
-                log(
-                    "tool_result",
-                    category="agent",
-                    name=func_call,
-                    result_preview=str(observation)
-                )
+                log(f"[tool_result] {func_call}\n{observation}")
                 
             # 这里可以进行记忆压缩的操作，但难点是什么时候进行压缩，如果Agent正在进行任务没理由压缩记忆，所以需要Agent自行判断是否要进行压缩，或者在任务完成后可以进行压缩
             
-            print("Model reasoning: ")
-            
             if isinstance(observation, str):
                 observation = f"observation after calling {func_call}:\n" + observation            
-            response = api[self.UseModel](observation, self.Memory)
+            if docs_with_imgs:
+                response = api["Doubao"](observation, self.Memory)
+            else:
+                response = structured_response(observation, self.Memory)
 
             think, text, func_call, func_args = parse_response(response)
-            log(
-                "llm_decision",
-                category="agent",
-                think=think,
-                response=text,
-                action=func_call,
-                action_input=func_args,
-            )
+            log(str(response))
             
-            print("my think: ", think)
-            print('-' * 27, "\nAssistant: ", text)
-            print('-' * 27)
+            # print("my think: ", think)
+            print('-' * 38, "\nAssistant: ", text)
+            print('-' * 38)
             
             if func_call == "Finish":
-                log("task_finish", category="agent", final_response=text)
+                log(f"[task_finish]\n{text}")
                 break
         log("==================Finish Task====================")
         # self.compress_context__()

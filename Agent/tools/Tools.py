@@ -1,7 +1,5 @@
 from typing import Any, Dict, List
 
-from Agent.utils.logging_ import log
-
 class ToolsContainer:
     def __init__(self):
         self.prompt_all_tools = "下面列出所有可用工具的详细说明。每个工具都以完整的 JSON Schema 格式定义，包含名称、描述、参数定义、输出说明和使用建议。调用工具时必须严格遵循参数要求。\n"
@@ -16,7 +14,6 @@ class ToolsContainer:
             tool_name = tl.__class__.__name__
             self.tools[tool_name] = tl
             self.prompt_all_tools += tl.tool_prompt
-            log("loaded", category="tool", tool=tool_name)
     
     def call_func(self, func_call: str, func_args: Dict[str, Any]) -> Any:
         """
@@ -31,40 +28,29 @@ class ToolsContainer:
         """
         # 检查工具是否存在
         if func_call not in self.tools:
-            error_msg = f"Tool not found: {func_call}."
-            log("not_found", category="tool", tool=func_call, error=error_msg)
-            return error_msg
+            return f"Tool not found: {func_call}."
         
         func = self.tools[func_call]
         
         # 验证参数是否为字典类型
         if not isinstance(func_args, dict):
-            error_msg = f"Invalid arguments type: {type(func_args)}. Expected dict."
-            log("invalid_args", category="tool", tool=func_call, error=error_msg)
-            return error_msg
-        
-        log("invoke", category="tool", tool=func_call, args=func_args)
+            return f"Invalid arguments type: {type(func_args)}. Expected dict."
         
         try:
             # 调用工具函数
             result = func(**func_args)
-            preview = result if isinstance(result, str) else str(result)
-            log("success", category="tool", tool=func_call, result_preview=preview[:500])
             return result
         except TypeError as e:
             # 参数类型错误
             error_msg = f"Parameter error in {func_call}: {str(e)}\n"
-            log("type_error", category="tool", tool=func_call, error=error_msg)
             return error_msg
         except KeyError as e:
             # 参数键错误
             error_msg = f"Missing parameter in {func_call}: {str(e)}\n"
-            log("missing_param", category="tool", tool=func_call, error=error_msg)
             return error_msg
         except Exception as e:
             # 其他异常
             error_msg = f"Failed to run {func_call} with {func_args}: {str(e)}\n"
-            log("error", category="tool", tool=func_call, error=error_msg, args=func_args)
             return 
         
         
