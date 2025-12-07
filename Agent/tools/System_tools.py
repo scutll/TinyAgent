@@ -170,7 +170,7 @@ class execute_command(Tool_):
             if not self._confirm_with_user(command, why):
                 return f"已取消执行。\n原因: {why}\n命令: {command}"
         try:
-            print(f"执行命令: {command}")
+            print(f"Running Command: {command}")
 
             result = subprocess.run(
                 command,

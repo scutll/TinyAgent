@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 _LOG_FILE: Optional[Path] = None
 _LOCK = Lock()
+_PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _ensure_log_file() -> Path:
@@ -14,7 +15,7 @@ def _ensure_log_file() -> Path:
 
     with _LOCK:
         if _LOG_FILE is None:
-            logs_dir = Path("logs")
+            logs_dir = _PACKAGE_ROOT / "logs"
             logs_dir.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             _LOG_FILE = logs_dir / f"agent_run_{timestamp}.log"

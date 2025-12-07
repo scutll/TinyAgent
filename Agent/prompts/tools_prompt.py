@@ -81,7 +81,8 @@ get_absolute_cur_path_prompt = """
   "returns": "Absolute path as a string.",
   "safety_notes": [],
   "usage_notes": [
-    "Run before constructing relative paths if you're unsure about the current location."
+    "Run before constructing relative paths if you're unsure about the current location.",
+    "Use this tool before performing file reads/writes or executing shell commands so you can reason about absolute paths explicitly in your 'think' step."
   ]
 }
 """
@@ -181,17 +182,19 @@ Finish_prompt = """
 """
 
 
-inquery_user_prompt = """
+talk_with_user_prompt = """
 {
-  "name": "inquery_user",
-  "description": "Ask the user for clarification or explicit approval when intent is unclear or when an operation is high risk.",
+  "name": "talk_with_user",
+  "description": "Start an interactive turn with the human user to ask a clear question, get clarification, or request explicit approval.",
   "parameters": {"type": "object", "properties": {}, "required": []},
   "returns": "User-provided text, or `Error reading user input: ...`.",
   "safety_notes": [
     "Explain exactly what information or permission you need.",
-    "Use before irreversible actions such as deletions, overwrites, or dangerous shell commands."
+    "Use before irreversible actions such as deletions, overwrites, or dangerous shell commands.",
+    "Do not ask multiple unrelated questions in a single turn."
   ],
   "usage_notes": [
+    "In the same round where you call `talk_with_user`, put the exact question you want to ask the human in the `response` field so the user can see it.",
     "Keep questions focused—do not over-interrogate the user.",
     "Record the reason for asking in `think` and summarize the user's answer in the next `observation`."
   ]

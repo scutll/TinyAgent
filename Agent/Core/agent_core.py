@@ -2,13 +2,15 @@
 # it does not contains the model directly, but the pipeline does for it 
 # the agent_core is deployed in user's system, and the Model deployed in the server. agent_core uploads input and gets reply streamly from server
 
-import os
+RED = "\033[31m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+BLUE = "\033[34m"
+RESET = "\033[0m"
+
 from Agent.request.api import api,structured_response, agentOutputFields
 from Agent.prompts.prompt_react import prompt_react
 from Agent.prompts.tools_prompt import *
-
-# 创建日志目录和文件
-os.makedirs("logs", exist_ok=True)
 
 from Agent.Memory.container import MemoryContainer
 from Agent.Memory.compression import memory_compress__
@@ -26,7 +28,7 @@ import Agent.tools.docs_tools as dt
 import Agent.tools.inquery_tool as it
 from Agent.prompts.tools_prompt import Finish_prompt 
 tools = ToolsContainer()
-Tools = [it.inquery_user(),
+Tools = [it.talk_with_user(),
          ft.create_file(), ft.read_file(), ft.search_replace(),
          st.delete_dir(), st.delete_file(), st.get_absolute_cur_path(), st.tree_file(), st.execute_command(),
          dt.read_word_document(), dt.extract_info_from_docx_table(),
@@ -91,9 +93,7 @@ class AgentCore:
 
         think, text, func_call, func_args = parse_response(response)
         log(str(response))
-        # print('-' * 27, "\nmy think: ", think)
-        print('-' * 27, "\nAssistant: ", text)
-        print('-' * 27)
+        print('-' * 38, f"\n{BLUE}Assistant{RESET}: ", text)
         if func_call == "Finish":
             log(f"[task_finish]\n{text}")
             log("==================Finish Task====================")
@@ -111,7 +111,7 @@ class AgentCore:
                 \nTracestack:\n
                 """ + text
             else:
-                print(f"-> calling tool: {func_call}")
+                print(f"{GREEN}calling tool{RESET}: {func_call}")
                 observation =  tools.call_func(func_call, func_args)
             if isinstance(observation, str) and func_call != dt.read_word_document.__name__:
                 log(f"[tool_result] {func_call}\n{observation}")
@@ -129,8 +129,7 @@ class AgentCore:
             log(str(response))
             
             # print("my think: ", think)
-            print('-' * 38, "\nAssistant: ", text)
-            print('-' * 38)
+            print('-' * 38, f"\n{BLUE}Assistant{RESET}: ", text)
             
             if func_call == "Finish":
                 log(f"[task_finish]\n{text}")

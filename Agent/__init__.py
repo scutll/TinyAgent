@@ -1,2 +1,2 @@
-__all__ = ["AgentCore"]
+__all__ = ["codem-agentcoder"]
 __version__ = "0.1.0"

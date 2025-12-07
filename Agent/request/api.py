@@ -1,10 +1,40 @@
 import json
+from pathlib import Path
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from volcenginesdkarkruntime import Ark
 from Agent.utils.logging_ import log
 from Agent.Memory.container import MemoryContainer
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
+_CONFIG_CACHE: Optional[Dict[str, Any]] = None
+
+
+def _load_config() -> Dict[str, Any]:
+    global _CONFIG_CACHE
+    if _CONFIG_CACHE is not None:
+        return _CONFIG_CACHE
+
+    package_root = Path(__file__).resolve().parents[1]
+    candidate_paths = [
+        package_root / "config.json",
+        package_root.parent / "config.json",
+    ]
+
+    for candidate in candidate_paths:
+        if candidate.is_file():
+            with candidate.open("r", encoding="utf-8") as fp:
+                _CONFIG_CACHE = json.load(fp)
+            log(f"[config] loaded config.json from {candidate}")
+            return _CONFIG_CACHE
+
+    message = (
+        "config.json not found. Checked paths: "
+        + ", ".join(str(p) for p in candidate_paths)
+    )
+    log(f"[config][error] {message}")
+    raise FileNotFoundError(message)
+
+
 models = {
     "deepseek": "deepseek-chat",
     "deepseek-reasoner": "deepseek-reasoner",
@@ -13,8 +43,7 @@ models = {
 }
 
 # 从配置文件读取API配置
-with open('config.json', 'r') as f:
-    config = json.load(f)
+config = _load_config()
 
 ds_api_key = config["ds_api_key"] if "ds_api_key" in config else ""
 ds_base_url = config["ds_base_url"] if "ds_base_url" in config else ""

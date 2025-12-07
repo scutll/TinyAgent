@@ -2,22 +2,24 @@
 # 当LLM对用户的一些意图(是否要修改某文件/是否要创建文件/目的)不够明确时，为减缓幻觉的发生，向用户询问必要的信息
 # 当LLM希望提问时，应该简单说明LLM想要获取的信息或许可，提示用户需要他输入信息
 from Agent.tools.Tools import Tool_
-from Agent.prompts.tools_prompt import inquery_user_prompt
-class inquery_user(Tool_):
+from Agent.prompts.tools_prompt import talk_with_user_prompt
+
+RED = "\033[31m"
+RESET = "\033[0m"
+class talk_with_user(Tool_):
     def __init__(self) -> None:
-        super().__init__(inquery_user_prompt)
-        
+        super().__init__(talk_with_user_prompt)
+
     def __call__(self) -> str:
-        """
-        To ask user question to make Agent more clearly on user's target and task
+        """Ask the human user a question to clarify intent, goals, or grant permission.
+
         params: None
-        return: user's explaination
+        return: user's explanation or an error string
         """
-        print("--------------------------------")
+        print("-" * 38)
         try:
-            user_input = input("(User): ")
+            user_input = input(f"{RED}(User){RESET}: ")
         except Exception as e:
             user_input = f"Error reading user input: {e}"
-        print("--------------------------------")
         
         return user_input
