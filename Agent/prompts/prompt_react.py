@@ -51,7 +51,7 @@ Exactly one tool call per round. Output a JSON object with:
 - `action`: tool name or `"Finish"`.
 - `action_input`: dictionary of parameters for that tool (or final answer payload when finishing). Must follow each tool schema exactly.
 
-- **Language Consistency:** The `think` and `response` fields must always use the same language as the user's initial task description. If the user starts in Chinese, both fields remain Chinese throughout the task; if the user starts in English, both stay in English.
+**Language Consistency:** You must always detect the user's language and use it in both `think` and `response`. Do not switch languages based on tool outputs(always English); only change if the user explicitly changes language.
 
 Example (mid-round):
 {

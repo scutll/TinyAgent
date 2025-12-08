@@ -22,13 +22,13 @@ class tree_file(Tool_):
         """
         # 确保路径存在
         if not os.path.exists(path):
-            return f"[Error] 路径不存在: {path}"
+            return f"[Error] Path not found: {path}"
 
         # 列出目录下所有文件和文件夹
         try:
             entries = sorted(os.listdir(path))
         except PermissionError:
-            return f"{prefix}└── [权限不足]: {os.path.basename(path)}"
+            return f"{prefix}└── [Permission denied]: {os.path.basename(path)}"
 
         # 构建结果字符串列表
         result_lines = []
@@ -161,14 +161,14 @@ class execute_command(Tool_):
         timeout=60
         is_safe, reason = self._is_safe_command(command)
         if not is_safe:
-            return f"安全检查失败: {reason}\n 命令:{command}不允许执行"    
+            return f"Security check failed: {reason}\nCommand: {command} is not allowed"
         # 用户许可判定
         parts = command.strip().split()
         main_cmd = parts[0].lower() if parts else ""
         needs_consent, why = self._needs_user_consent(command, parts, main_cmd)
         if needs_consent and user_confirmed is not True:
             if not self._confirm_with_user(command, why):
-                return f"已取消执行。\n原因: {why}\n命令: {command}"
+                return f"Execution cancelled.\nReason: {why}\nCommand: {command}"
         try:
             print(f"Running Command: {command}")
 
@@ -183,8 +183,8 @@ class execute_command(Tool_):
             
             # 构建返回信息
             output_lines = []
-            output_lines.append(f"命令执行完成 (return code: {result.returncode})")
-            output_lines.append(f"命令: {command}")
+            output_lines.append(f"Command completed (return code: {result.returncode})")
+            output_lines.append(f"Command: {command}")
             
             if result.stdout:
                 output_lines.append("\n--- command output ---")
@@ -194,17 +194,17 @@ class execute_command(Tool_):
                 output_lines.append("\n--- command error ---")
                 output_lines.append(result.stderr.strip())
             
-            # 如果命令失败
+            # If command failed
             if result.returncode != 0:
-                output_lines.insert(0, f"命令执行失败 (退出码: {result.returncode})")
+                output_lines.insert(0, f"Command failed (exit code: {result.returncode})")
             
             return "\n".join(output_lines)
             
         except subprocess.TimeoutExpired:
-            return f"❌ 命令执行超时（>{timeout}秒）\n命令: {command}"
+            return f"❌ Command timed out (>{timeout}s)\nCommand: {command}"
         
         except Exception as e:
-            return f"❌ 命令执行异常: {str(e)}\n命令: {command}"
+            return f"❌ Command execution error: {str(e)}\nCommand: {command}"
     
         
         
@@ -221,32 +221,32 @@ class execute_command(Tool_):
         
         # 检查空命令
         if not command_lower:
-            return False, "空命令"
+            return False, "empty command"
         
         # 检查命令链
         if any(sep in command for sep in ["&&", "||", ";", "|"]):
-            return False, "不允许命令链或管道操作，请逐条执行命令"
+            return False, "Command chaining or piping is not allowed; execute commands separately"
         
         # 提取主命令
         parts = command_lower.split()
         if not parts:
-            return False, "无效命令"
+            return False, "invalid command"
         
         main_cmd = parts[0]
         
         # 高危命令直接禁止
         if any(bad in command_lower.split() for bad in self.danger_forbidden):
-            return False, "包含高危命令，已禁止"
+            return False, "contains forbidden high-risk command"
         
         # 检查主命令是否在白名单
         if main_cmd not in self.safe_commands:
-            return False, f"命令 '{main_cmd}' 不在安全白名单中"
+            return False, f"Command '{main_cmd}' is not in the safe whitelist"
         
         # 禁止启动交互式 REPL（无参数）
         if main_cmd in ["python", "python3", "node"] and len(parts) == 1:
-            return False, f"不允许启动交互式 {main_cmd} 会话"
+            return False, f"Starting interactive {main_cmd} session is not allowed"
         
-        return True, "命令通过安全检查"
+        return True, "Command passed security check"
 
     def _needs_user_consent(self, command: str, parts: list, main_cmd: str) -> Tuple[bool, str]:
         """
@@ -256,7 +256,7 @@ class execute_command(Tool_):
 
         # 文件重定向写入（覆盖或追加）都视为修改
         if ">>" in cl or ">" in cl:
-            return True, "包含输出重定向，可能写入/覆盖文件"
+            return True, "Contains output redirection; may write/overwrite files"
 
         # 文件/目录操作：一律视为修改
         file_write_cmds = {
@@ -267,12 +267,12 @@ class execute_command(Tool_):
         }
         if main_cmd in file_write_cmds:
             why = {
-                "copy": "文件复制/覆盖", "cp": "文件复制/覆盖", "xcopy": "文件复制/覆盖", "robocopy": "文件复制/覆盖",
-                "move": "移动/重命名", "mv": "移动/重命名", "rename": "移动/重命名", "ren": "移动/重命名",
-                "mkdir": "创建目录", "md": "创建目录",
-                "rmdir": "删除目录", "rd": "删除目录",
-                "del": "删除文件", "rm": "删除文件",
-            }.get(main_cmd, "文件系统修改")
+                "copy": "file copy/overwrite", "cp": "file copy/overwrite", "xcopy": "file copy/overwrite", "robocopy": "file copy/overwrite",
+                "move": "move/rename", "mv": "move/rename", "rename": "move/rename", "ren": "move/rename",
+                "mkdir": "create directory", "md": "create directory",
+                "rmdir": "delete directory", "rd": "delete directory",
+                "del": "delete file", "rm": "delete file",
+            }.get(main_cmd, "filesystem modification")
             return True, f"{why}"
 
         # Git：读写分流
@@ -283,28 +283,28 @@ class execute_command(Tool_):
                 "show", "rev-parse", "ls-files", "describe", "blame",
             }
             if action in read_only:
-                return False, "Git 只读操作"
-            # 其他 git 操作默认为修改
-            return True, f"Git '{action}' 可能修改工作区/仓库"
+                return False, "Git read-only operation"
+            # Other git actions are assumed to modify
+            return True, f"Git '{action}' may modify the workspace/repository"
 
         # 包管理器：安装/卸载/更新/发布等需要许可
         if main_cmd in {"pip", "pip3", "poetry", "conda"}:
             action = parts[1] if len(parts) > 1 else ""
             read_only = {"list", "show", "freeze", "check", "info", "search"}
             if action in read_only:
-                return False, "包管理只读查询"
-            return True, f"{main_cmd} '{action or '命令'}' 可能修改环境"
+                return False, "Package manager read-only query"
+            return True, f"{main_cmd} '{action or 'command'}' may modify the environment"
 
         if main_cmd in {"npm", "yarn", "pnpm"}:
             action = parts[1] if len(parts) > 1 else ""
             read_only = {"list", "ls", "outdated", "audit", "view", "info"}
             if action in read_only:
-                return False, "包管理只读查询"
-            return True, f"{main_cmd} '{action or '命令'}' 可能修改环境/依赖"
+                return False, "Package manager read-only query"
+            return True, f"{main_cmd} '{action or 'command'}' may modify environment/dependencies"
 
         # 运行脚本：默认需要许可（无法静态判断是否写入）
         if main_cmd in {"python", "python3", "node"}:
-            return True, "运行脚本可能修改环境或文件"
+            return True, "Running scripts may modify environment or files"
 
         # 其他常见只读查询命令
         read_only_cmds = {
@@ -313,21 +313,21 @@ class execute_command(Tool_):
             "findstr", "grep", "tree",
         }
         if main_cmd in read_only_cmds:
-            return False, "只读查询命令"
+            return False, "read-only query command"
 
-        # 默认保守：需要许可
-        return True, "无法判定安全性，需用户确认"
+        # Default conservative: require consent
+        return True, "Unable to determine safety; user confirmation required"
 
     def _confirm_with_user(self, command: str, reason: str) -> bool:
         """
         在控制台显式询问用户许可
         """
-        print("即将执行可能修改系统/文件/仓库的命令：")
-        print(f"- 原因：{reason}")
-        print(f"- 工作目录：{os.getcwd()}")
-        print(f"- 命令：{command}")
+        print("About to execute a command that may modify system/files/repository:")
+        print(f"- Reason: {reason}")
+        print(f"- Working directory: {os.getcwd()}")
+        print(f"- Command: {command}")
         try:
-            resp = input("是否确认执行？输入 yes 继续（其他任意键取消）：").strip().lower()
+            resp = input("Confirm execution? Type 'yes' to continue (any other key cancels):").strip().lower()
             return resp == "yes"
         except Exception:
             return False

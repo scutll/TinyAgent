@@ -4,35 +4,9 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from volcenginesdkarkruntime import Ark
 from Agent.utils.logging_ import log
+from Agent.utils.config import _load_config
 from Agent.Memory.container import MemoryContainer
 from typing import Any, Dict, Optional, Union
-_CONFIG_CACHE: Optional[Dict[str, Any]] = None
-
-
-def _load_config() -> Dict[str, Any]:
-    global _CONFIG_CACHE
-    if _CONFIG_CACHE is not None:
-        return _CONFIG_CACHE
-
-    package_root = Path(__file__).resolve().parents[1]
-    candidate_paths = [
-        package_root / "config.json",
-        package_root.parent / "config.json",
-    ]
-
-    for candidate in candidate_paths:
-        if candidate.is_file():
-            with candidate.open("r", encoding="utf-8") as fp:
-                _CONFIG_CACHE = json.load(fp)
-            log(f"[config] loaded config.json from {candidate}")
-            return _CONFIG_CACHE
-
-    message = (
-        "config.json not found. Checked paths: "
-        + ", ".join(str(p) for p in candidate_paths)
-    )
-    log(f"[config][error] {message}")
-    raise FileNotFoundError(message)
 
 
 models = {
@@ -48,8 +22,19 @@ config = _load_config()
 ds_api_key = config["ds_api_key"] if "ds_api_key" in config else ""
 ds_base_url = config["ds_base_url"] if "ds_base_url" in config else ""
 
-doubao_api_key = config["doubao_api_key"] if "doubao_api_key" in config else ""
-doubao_base_url = config["doubao_base_url"] if "doubao_base_url" in config else ""
+if "doubao_api_key" in config:
+    doubao_api_key = config["doubao_api_key"]
+elif "api_key" in config:
+    doubao_api_key = config["api_key"]
+else:
+    doubao_api_key = ""
+
+if "doubao_base_url" in config:
+    doubao_base_url = config["doubao_base_url"]
+elif "base_url" in config:
+    doubao_base_url = config["base_url"]
+else:
+    doubao_base_url = ""
 
 
 client = OpenAI(

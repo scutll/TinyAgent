@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 class ToolsContainer:
     def __init__(self):
-        self.prompt_all_tools = "下面列出所有可用工具的详细说明。每个工具都以完整的 JSON Schema 格式定义，包含名称、描述、参数定义、输出说明和使用建议。调用工具时必须严格遵循参数要求。\n"
+        self.prompt_all_tools = "Below is a detailed description of all available tools. Each tool is defined in complete JSON Schema format, including its name, description, parameter definitions, output specifications, and usage recommendations. When invoking a tool, you must strictly follow the parameter requirements.\n"
         self.tools = dict()
         
     
@@ -39,7 +39,7 @@ class ToolsContainer:
         try:
             # 调用工具函数
             result = func(**func_args)
-            return result
+            return f"[from tool {func_call}]: " + str(result)
         except TypeError as e:
             # 参数类型错误
             error_msg = f"Parameter error in {func_call}: {str(e)}\n"
@@ -51,7 +51,7 @@ class ToolsContainer:
         except Exception as e:
             # 其他异常
             error_msg = f"Failed to run {func_call} with {func_args}: {str(e)}\n"
-            return 
+            return error_msg
         
         
 class Tool_:

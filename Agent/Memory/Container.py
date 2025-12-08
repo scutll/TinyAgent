@@ -10,7 +10,7 @@ class MemoryContainer:
     def reset__(self):
         self.conversation = []
         self.system_prompt = {"role": "system", "content": ""}
-        self.tool_prompt = {"role": "system", "content": ""}
+        # self.tool_prompt = {"role": "system", "content": ""}
         
         
     def _add_tool_message(self, message: Union[str, List]):

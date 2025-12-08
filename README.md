@@ -1,5 +1,13 @@
 # TinyAgent : a small agent to help you do something
 
+Version 0.1.0
+可以直接安装在设备中，用命令行进行操作，但是config.json需要在文件里面设置，也暂不支持对话保存
+Version 0.1.1
+支持CLI配置api_key/base_url, 并解决了创建新对话时的问题，以及解决了llm不正常使用用户同语言问题
+
+Version 0.1.2 计划
+config.json支持更多配置
+
 ## 现支持功能: 
 - 读取**Word文档(docx文件，多模态使用Doubao，可支持表格信息粗略读取)**、各种文本文件、搜索网页信息
 - 简单的**根据任务生成代码**
