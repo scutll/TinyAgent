@@ -1,11 +1,21 @@
+from datetime import datetime
+import json
+import os
+from Agent.utils.logging_ import log
 from typing import Any, List, Union
 
 
 class MemoryContainer:
-    def __init__(self, conversation=[]):
+    def __init__(self):
         self.system_prompt = {"role": "system", "content": ""}
         self.tool_prompt = {"role": "system", "content": ""}
-        self.conversation = conversation
+        self.conversation = []
+        self.history_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 
+            "history"
+        )
+        os.makedirs(self.history_dir, exist_ok=True)
+        print(self.history_dir)
         
     def reset__(self):
         self.conversation = []
@@ -13,18 +23,32 @@ class MemoryContainer:
         # self.tool_prompt = {"role": "system", "content": ""}
         
         
-    def _add_tool_message(self, message: Union[str, List]):
-        self.conversation.append({"role": "tool", "content": message})
         
-    def _add_user_message(self, message: Union[str, List], tool_role=False):
-        self.conversation.append({"role": "tool" if tool_role else "user", "content": message})
+    def _add_user_message(self, message: Union[str, List]):
+        message_block = {"role": "user", "content": message}
+        self.conversation.append({
+            "type": "user message",
+            "time": datetime.now().strftime("%m%d-%H%M"),
+            "content" : message_block
+        })
         
     def _pop_message(self):
         if len(self.conversation):
             self.conversation.pop()
         
     def _add_assistant_message(self, message: str):
-        self.conversation.append({"role": "assistant", "content": message})
+        message_block = {"role": "assistant", "content": message}
+        self.conversation.append({
+            "type": "assistant message",
+            "time": datetime.now().strftime("%m%d-%H%M"),
+            "content" : message_block
+        })
+        
+    def _get_conversation(self) -> List:
+        conv = []
+        for item in self.conversation:
+            conv.append(item["content"])
+        return conv
         
     def _add_system_prompt(self, system_prompt):
         if self.system_prompt is None:
@@ -41,12 +65,7 @@ class MemoryContainer:
             self.tool_prompt = {"role": "system", "content": original_prompt + tool_prompt}
         
     def __call__(self) -> List:
-        return [self._system_prompt()] + [self._tool_prompt()] + self.conversation
-    
-    
-    def _user_conversation(self) -> List:
-        return self.conversation
-    
+        return [self._system_prompt()] + [self._tool_prompt()] + self._get_conversation()
     
     
     def _tool_prompt(self) -> dict:
@@ -72,3 +91,37 @@ class MemoryContainer:
     
     def _len_tool_prompt(self) -> int:
         return len(str(self.tool_prompt))
+    
+    
+    
+    def _load_conversation(self, filename:str):
+        
+        file_path = os.path.join(self.history_dir, filename)
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.conversation = data.get("conversation", [])
+            log(f"[INFO] Conversation loaded from '{file_path}'")
+            # print(f"conversation loaded from {filename}")
+        else:
+            log(f"[ERROR] History file '{file_path}' not found. No conversation loaded.")
+            # print(f"failed to load {filename}: not a file")
+    
+    
+    def _save_conversation(self, filename:str, save_name = None):
+        """
+        保存当前 conversation 到 history 目录下的文件
+        """
+        filename += ".json"
+        file_path = os.path.join(self.history_dir, filename)
+
+        timestamp = datetime.now().strftime("%m%d-%H%M")
+        data_to_save = {
+            "save_time": timestamp,
+            "conv_name": save_name if save_name is not None else "Not named",
+            "conversation": self.conversation
+        }
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data_to_save, f, ensure_ascii=False, indent=4)
+        log(f"[INFO] Conversation saved to '{file_path}'")

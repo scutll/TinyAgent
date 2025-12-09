@@ -58,13 +58,18 @@ class AgentCore:
         self.Memory._add_tool_prompt(tool_prompt=all_tools_prompt)
         
 
-    def set_task(self, task: str):
+    def set_input(self, task: str):
         self.task = task
+        
         
     def reset_conversation__(self):
         self.Memory.reset__()
         self.Memory._add_system_prompt(system_prompt)
-        print("conversation reset!")
+        # print("conversation reset!")
+        
+    def load_conv(self, filename):
+        self.Memory._load_conversation(filename)
+        
         
     def compress_context__(self):
         print(len(self.Memory.tool_prompt["content"]), len(self.Memory.system_prompt["content"]), len(self.Memory.conversation))
@@ -76,13 +81,16 @@ class AgentCore:
         
         
 
-    def run(self):
+    def run(self, dialog: str):
         if self.task is None:
             raise Exception("None task!")
         # self.cur_conv = new_conversation()
         # response = get_response(self.task, self.cur_conv)
         
         # response = get_response_from_dsApi(self.task, Memory)
+        from Agent.request.api import set_dialog
+        set_dialog(dialog)
+        
         input = self.task
         log(f"[task_start] model={self.model}\n{input}")
         

@@ -426,3 +426,4 @@ deepseek_vl/
 llmApi/
 gydl/
 Agent/prompts/tools_db
+Agent/history/*

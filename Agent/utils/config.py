@@ -64,3 +64,18 @@ def _load_config() -> Dict[str, Any]:
     _CONFIG_CACHE = json.load(open(config_path, "r", encoding="utf-8"))
     log(f"[config] created default {CONFIG_FILE} at {config_path}")
     return _CONFIG_CACHE
+
+def config_(key:str, value):
+    
+    package_root = Path(__file__).resolve().parents[1]
+    config_path = package_root / CONFIG_FILE
+    
+    if config_path.is_file():
+        with config_path.open("r", encoding="utf-8") as fp:
+            _CONFIG_CACHE = json.load(fp)
+            
+    _CONFIG_CACHE[key] = value
+    
+    if config_path.is_file():
+        with config_path.open("w", encoding="utf-8") as fp:
+            json.dump(_CONFIG_CACHE, fp, ensure_ascii=False, indent=4)

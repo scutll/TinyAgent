@@ -7,7 +7,10 @@ from Agent.utils.logging_ import log
 from Agent.utils.config import _load_config
 from Agent.Memory.container import MemoryContainer
 from typing import Any, Dict, Optional, Union
-
+CURRENT_DIALOG_ = None
+def set_dialog(dialog:str):
+    global CURRENT_DIALOG_
+    CURRENT_DIALOG_ = dialog
 
 models = {
     "deepseek": "deepseek-chat",
@@ -109,6 +112,8 @@ class agentOutputFields(BaseModel):
 
 def structured_response(input: Union[list, str], Memory: MemoryContainer, Model="doubao-seed-1-6-thinking-250715"):
     Memory._add_user_message(input)
+    global CURRENT_DIALOG_
+    Memory._save_conversation(CURRENT_DIALOG_)
     log(f"[structured request][{Model}]\n{input}")
     client = OpenAI(
         base_url='https://ark.cn-beijing.volces.com/api/v3',
@@ -124,7 +129,9 @@ def structured_response(input: Union[list, str], Memory: MemoryContainer, Model=
     log(f"[structured response][{Model}]\n{result}")
     if result:
         Memory._add_assistant_message(str(result))
+        Memory._save_conversation(CURRENT_DIALOG_)
     else:
+        # 这个情况下save以后暂时没法删除，除非下次保存覆盖，待完善
         Memory._pop_message()
     
     return result if result is not None else "Failed to generate response!"
