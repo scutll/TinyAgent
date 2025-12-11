@@ -1,17 +1,32 @@
 tree_file_prompt = """
 {
   "name": "tree_file",
-  "description": "Recursively list the entire directory tree (similar to the `tree` command) to understand project layout and locate deeply nested files.",
+  "description": "List a directory tree (similar to `tree`) to inspect and analyze project structure.",
   "parameters": {
     "type": "object",
-    "properties": {},
+    "properties": {
+      "start_path": {
+        "type": "string",
+        "description": "Path to start scanning from. Use it to focus on a specific subdirectory when deeper inspection is needed."
+      },
+      "search_depth": {
+        "type": "integer",
+        "description": "How many directory levels to expand (1–4). Controls recursion depth to avoid excessive output."
+      },
+      "ignore_list": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Directory names to ignore completely (not displayed and not expanded). Useful for skipping non-code folders such as .vscode, .idea, node_modules, __pycache__, dist, build, etc."
+      }
+    },
     "required": []
   },
-  "returns": "Plain-text tree that uses characters such as `├──` and `└──`. Errors return a descriptive string.",
-  "safety_notes": [],
+  "returns": "A plain-text tree using characters like `├──` and `└──`. Errors return descriptive strings.",
   "usage_notes": [
-    "Useful before structural changes or when you need a quick mental map of the repo.",
-    "Large projects can generate long outputs—decide in `think` whether it is necessary."
+    "Use this tool to understand the project's code structure, locate important directories, and prepare for further analysis.",
+    "First call: always use `search_depth = 1` to get a top-level overview. Based on the result, set an appropriate `ignore_list` to exclude non-code or irrelevant directories.",
+    "After ignore_list is set, increase `search_depth` (2–4) to progressively explore more code files while keeping output manageable.",
+    "When you need to inspect the inside of a specific directory beyond the global depth limit, set `start_path` to that directory and repeat the same shallow-→-refine procedure."
   ]
 }
 """
@@ -96,8 +111,9 @@ read_file_prompt = """
     "type": "object",
     "properties": {
       "path": {
-        "type": "string",
-        "description": "Path to the text file (relative to CWD or absolute)."
+        "type": "list",
+        "items": { "type": "string" },
+        "description": "Read the full contents of one or more UTF-8 text files. **You are supposed to provide paths as a list** (a single file has to be in list form also) to retrieve files at once, which can help save resources."
       }
     },
     "required": ["path"]
@@ -108,8 +124,8 @@ read_file_prompt = """
     "Avoid leaking secrets—summarize sensitive content instead of copying verbatim when responding to users."
   ],
   "usage_notes": [
-    "Preview structure with `tree_file` if the path is uncertain.",
-    "For large files, plan which sections you truly need."
+    "Preview structure with `tree_file` if paths are uncertain.",
+    "Provide multiple files in the list to reduce repeated calls.",
   ]
 }
 """

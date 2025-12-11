@@ -63,6 +63,7 @@ def main():
                 if int(switch_) <= cnt:
                     agent.load_conv(chat_cache[int(switch_)] + ".json")
                     print(f"chat switched to {chat_cache[int(switch_)]}!")
+                    CURRENT_DIALOG_ = chat_cache[int(switch_)]
                     continue
                 
             print("invalid switch choice!")

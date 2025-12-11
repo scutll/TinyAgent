@@ -1,5 +1,6 @@
 # file operation for agent editing or reading file
 import os
+from typing import List, Union
 from Agent.tools.Tools import Tool_
 from Agent.prompts.tools_prompt import read_file_prompt, search_replace_prompt, create_file_prompt
 
@@ -7,17 +8,23 @@ class read_file(Tool_):
     def __init__(self):
         super().__init__(read_file_prompt)
     
-    def __call__(self, path:str):
+    def __call__(self, path:List[str]) -> str:
         """Read a text file and return its content.
 
         On error returns a string starting with "error in reading <path>: <error>".
         """
-        try:
-            with open(path, "r", encoding='utf-8') as f:
-                content = f.read()
-        except Exception as e:
-            content = f"error in reading {path}: {e}"
-        return content     
+        result = []
+        for file in path:
+            try:
+                with open(file, "r", encoding='utf-8') as f:
+                    content = f.read()
+                    result.append("content of " + file + " :")
+                    result.append("\n" + content + "\n")
+            except Exception as e:
+                content = f"error in reading {file}: {e}"
+                result.append(f"\n{content}\n")
+                
+        return "\n".join(result)
 
 class search_replace(Tool_):
     def __init__(self):

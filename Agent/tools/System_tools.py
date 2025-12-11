@@ -13,49 +13,44 @@ class tree_file(Tool_):
     def __init__(self):
         super().__init__(tree_file_prompt)
         
-    def __call__(self, path='.', prefix=''):
-        """
-        递归生成目录树字符串
-        :param path: 要展示的目录路径
-        :param prefix: 内部递归使用的前缀字符串
-        :return: 目录结构字符串
-        """
-        # 确保路径存在
-        if not os.path.exists(path):
-            return f"[Error] Path not found: {path}"
+    def __call__(self, start_path='.', search_depth=3, ignore_list=None):
+        if ignore_list is None:
+                ignore_list = []
+        search_depth = max(1, min(4, int(search_depth)))
 
-        # 列出目录下所有文件和文件夹
-        try:
-            entries = sorted(os.listdir(path))
-        except PermissionError:
-            return f"{prefix}└── [Permission denied]: {os.path.basename(path)}"
+        if not os.path.exists(start_path):
+            return f"[Error] Path not found: {start_path}"
 
-        # 构建结果字符串列表
-        result_lines = []
+        def _build(path, depth, prefix):
+            try:
+                entries = sorted(os.listdir(path))
+            except PermissionError:
+                return f"{prefix}└── [Permission denied]: {os.path.basename(path)}"
 
-        for i, name in enumerate(entries):
-            full_path = os.path.join(path, name)
-            is_last = i == len(entries) - 1
+            lines = []
+            for i, name in enumerate(entries):
+                full = os.path.join(path, name)
 
-            # 树形符号
-            connector = '└── ' if is_last else '├── '
+                # ======== 新增：ignore_list 内的目录完全不显示 ========
+                if name in ignore_list:
+                    continue
+                # ====================================================
 
-            # 当前行
-            result_lines.append(f"{prefix}{connector}{name}")
+                is_last = (i == len(entries) - 1)
+                connector = '└── ' if is_last else '├── '
+                lines.append(f"{prefix}{connector}{name}")
 
-            # 若是文件夹，递归调用
-            if os.path.isdir(full_path):
-                # 为子目录设置缩进前缀
-                extension = '    ' if is_last else '│   '
-                sub_tree = self(full_path, prefix + extension)
-                if sub_tree:
-                    result_lines.append(sub_tree)
+                if os.path.isdir(full):
+                    if depth >= search_depth:
+                        continue
+                    extension = '    ' if is_last else '│   '
+                    subtree = _build(full, depth + 1, prefix + extension)
+                    if subtree:
+                        lines.append(subtree)
 
-        # 根层调用返回完整字符串
-        if prefix == '':
-            return "\n".join(result_lines)
-        else:
-            return "\n".join(result_lines)
+            return "\n".join(lines)
+
+        return _build(start_path, depth=1, prefix="")
 
 
 
