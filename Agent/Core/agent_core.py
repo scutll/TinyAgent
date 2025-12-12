@@ -8,6 +8,8 @@ YELLOW = "\033[33m"
 BLUE = "\033[34m"
 RESET = "\033[0m"
 
+from typing import Any, Optional, Union
+
 from Agent.request.api import api,structured_response, agentOutputFields
 from Agent.prompts.prompt_react import prompt_react
 from Agent.prompts.tools_prompt import *
@@ -17,6 +19,7 @@ from Agent.Memory.compression import memory_compress__
 from Agent.request.api import *
 from Agent.utils.parser import parse_response
 from Agent.utils.logging_ import log
+from Agent.utils.config import get_configured_model
 
 
 # 导入工具
@@ -48,15 +51,47 @@ all_tools_prompt = tools.prompt_all_tools + Finish_prompt
 
 
 class AgentCore:
-    def __init__(self, model: str = "doubao-seed-1-6-thinking-250715"):
+    def __init__(self, model: Optional[str] = None):
         self.task = None
+        self._sticky_model = model is not None
+        if model is None:
+            try:
+                model = get_configured_model()
+            except ValueError:
+                model = "doubao-seed-1-6-thinking-250715"
         self.model = model
-        self.UseModel = "Doubao" if "doubao" in model.lower() else "Deepseek"
+        self.UseModel = model
         
         self.Memory = MemoryContainer()
         self.Memory._add_system_prompt(system_prompt)
         self.Memory._add_tool_prompt(tool_prompt=all_tools_prompt)
+
+    def refresh_model(self, force: bool = False) -> None:
+        if self._sticky_model and not force:
+            return
+        try:
+            configured = get_configured_model()
+        except ValueError:
+            return
+        if configured and configured != self.model:
+            self.model = configured
+            self.UseModel = configured
         
+    def _invoke_model(self, message: Union[str, list]) -> Any:
+        self.refresh_model()
+        alias = (self.model or "").lower()
+
+        if "gpt" in alias or alias in {"openai"}:
+            handler = api.get("gpt")
+        elif "doubao" in alias:
+            handler = api.get("Doubao") if docs_with_imgs else api.get("structured")
+        else:
+            handler = api.get("structured") if not docs_with_imgs else api.get("Doubao")
+
+        if handler is None:
+            raise RuntimeError("No available API handler for current configuration")
+        return handler(message, self.Memory)
+
 
     def set_input(self, task: str):
         self.task = task
@@ -84,20 +119,16 @@ class AgentCore:
     def run(self, dialog: str):
         if self.task is None:
             raise Exception("None task!")
-        # self.cur_conv = new_conversation()
-        # response = get_response(self.task, self.cur_conv)
-        
-        # response = get_response_from_dsApi(self.task, Memory)
+
+
         from Agent.request.api import set_dialog
         set_dialog(dialog)
         
         input = self.task
         log(f"[task_start] model={self.model}\n{input}")
         
-        if docs_with_imgs:
-            response = api["Doubao"](input, self.Memory)
-        else:
-            response = structured_response(input, self.Memory)
+        response = self._invoke_model(input)
+
 
         think, text, func_call, func_args = parse_response(response)
         log(str(response))
@@ -117,7 +148,7 @@ class AgentCore:
                 observation = """
                 你上次生成的回答格式有问题导致Agent无法成功解释，请查阅system_prompt，严格按照要求的输出格式重新输出:
                 \nTracestack:\n
-                """ + text
+                """ + think
             else:
                 print(f"{GREEN}calling tool{RESET}: {func_call}")
                 observation =  tools.call_func(func_call, func_args)
@@ -127,11 +158,9 @@ class AgentCore:
             # 这里可以进行记忆压缩的操作，但难点是什么时候进行压缩，如果Agent正在进行任务没理由压缩记忆，所以需要Agent自行判断是否要进行压缩，或者在任务完成后可以进行压缩
             
             if isinstance(observation, str):
-                observation = f"observation after calling {func_call}:\n" + observation            
-            if docs_with_imgs:
-                response = api["Doubao"](observation, self.Memory)
-            else:
-                response = structured_response(observation, self.Memory)
+                observation = f"observation after calling {func_call}:\n" + observation       
+                     
+            response = self._invoke_model(observation)
 
             think, text, func_call, func_args = parse_response(response)
             log(str(response))

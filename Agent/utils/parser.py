@@ -21,7 +21,7 @@ def parse_response(response: Union[str, agentOutputFields])->Tuple[str, str, str
         except Exception as e:
             log(str(e))
             log("Error: failed to parse response=================\n" + response)
-            return "", str(e) + "\n" + response, "ParseFailure", dict()
+            return str(e) + f"\n{response}", "Assistant response error, retrying" , "ParseFailure", dict()
 
         return data["think"], data["response"], data["action"], data["action_input"]
     
