@@ -15,7 +15,7 @@ class MemoryContainer:
             "history"
         )
         os.makedirs(self.history_dir, exist_ok=True)
-        print(self.history_dir)
+
         
     def reset__(self):
         self.conversation = []

@@ -1,6 +1,6 @@
 [project]
 name = "codem-agentcoder"
-version = "0.1.2"
+version = "0.1.5"
 
 [project.scripts]
 CodeM = "Agent.main:main"

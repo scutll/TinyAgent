@@ -199,6 +199,8 @@ def _handle_configured_model() -> None:
         print(f"配置模型已更新为: {name}\n")
     except ValueError as exc:
         print(f"设置失败: {exc}\n")
+        
+        
 def main():
     CURRENT_DIALOG_ = datetime.now().strftime("%m%d-%H%M")
     
@@ -210,7 +212,8 @@ def main():
         if ch == "1":
             while True:
                 try: 
-                    userInput = _read_user_input()
+                    # userInput = _read_user_input()
+                    userInput = input(">")
                     agent.set_input(userInput)
                     agent.run(CURRENT_DIALOG_)
                     

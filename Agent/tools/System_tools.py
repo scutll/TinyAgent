@@ -5,6 +5,7 @@ import time
 import shutil
 import subprocess
 import os
+import json
 from typing import Tuple, Optional
 from Agent.tools.Tools import Tool_
 from Agent.prompts.tools_prompt import tree_file_prompt, delete_dir_prompt, delete_file_prompt, get_absolute_cur_path_prompt, execute_command_prompt
@@ -112,60 +113,75 @@ class get_absolute_cur_path(Tool_):
 
     
 class execute_command(Tool_):
-    """
-    执行系统命令（带安全与许可控制）
+    """执行系统命令（简化版安全控制）
 
-    行为约定：
-    - 仅允许预定义白名单中的主命令。
-    - 可能修改文件/仓库/环境的命令，执行前会在控制台显式询问用户输入 yes 确认；
-      若上层已获得同意，可传 user_confirmed=True 跳过二次确认。
-    - 只读查询类命令（如 git status、dir/ls、pip list 等）直接执行。
-    - 禁止命令链/管道（例如 &&、||、;、|）以及高危系统命令（shutdown/sudo 等）。
+    新行为约定：
+    - 保留一个「只读命令白名单」，用于常见的信息查询类命令（如 dir/ls、git status、pip list 等）。
+    - 白名单中的命令：默认视为只读，可以直接执行，不再重复询问是否确认。
+    - 白名单外的任何命令：统一视为「可能有副作用」，每次执行前都在控制台询问用户输入 `y` 以确认执行。
+    - 不再维护复杂的高危禁止列表和细粒度判定逻辑，风险由用户在确认时自行把控。
     """
-    
+
     def __init__(self):
         super().__init__(execute_command_prompt)
-        # 安全命令白名单（是否需许可由 _needs_user_consent 判定）
-        self.safe_commands = {
-            # 语言/运行时
-            "python", "python3", "node",
-            # 包管理
-            "pip", "pip3", "poetry", "conda",
-            "npm", "yarn", "pnpm",
-            # Git
-            "git",
+        # 只读命令白名单（常见信息查询 / 枚举类命令）
+        self.read_only_whitelist = {
             # 系统/信息/查询
             "which", "where", "echo",
             "ps", "tasklist", "netstat",
             "systeminfo", "hostname", "whoami",
             "dir", "ls", "type", "cat", "findstr", "grep", "tree",
-            # 文件/目录操作（修改类命令运行前将请求许可）
-            "copy", "cp", "xcopy", "robocopy",
-            "move", "mv", "rename", "ren",
-            "mkdir", "md", "rmdir", "rd",
-            "del", "rm",
+            # Git 只读常用命令
+            "git status", "git log", "git diff", "git branch",
+            "git remote", "git show", "git rev-parse", "git ls-files",
+            # 包管理只读子命令（通过前缀匹配简单处理）
+            "pip list", "pip show", "pip freeze", "pip check", "pip search",
+            "pip3 list", "pip3 show", "pip3 freeze", "pip3 check", "pip3 search",
+            "poetry show", "poetry info",
+            "conda list", "conda info", "conda search",
+            "npm list", "npm ls", "npm outdated", "npm audit", "npm view", "npm info",
+            "yarn list", "yarn outdated", "yarn audit", "yarn info",
+            "pnpm list", "pnpm ls", "pnpm outdated", "pnpm audit", "pnpm view", "pnpm info",
         }
-        # 永久禁止（高危/系统级）
-        self.danger_forbidden = {
-            "shutdown", "reboot", "poweroff", "halt",
-            "format", "fdisk", "mkfs", "diskpart",
-            "sudo", "su",
-        }
-        
-    def __call__(self, command: str, user_confirmed: Optional[bool] = None) -> str:
-        timeout=60
-        is_safe, reason = self._is_safe_command(command)
-        if not is_safe:
-            return f"Security check failed: {reason}\nCommand: {command} is not allowed"
-        # 用户许可判定
-        parts = command.strip().split()
-        main_cmd = parts[0].lower() if parts else ""
-        needs_consent, why = self._needs_user_consent(command, parts, main_cmd)
-        if needs_consent and user_confirmed is not True:
-            if not self._confirm_with_user(command, why):
-                return f"Execution cancelled.\nReason: {why}\nCommand: {command}"
+        # 运行时允许直接执行的命令前缀（可通过用户选择动态添加），例如 "javac"、"python my_safe_script.py" 等
+        self.allow_list_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "allow_cmd_list.json")
+        self.dynamic_allowlist = self._load_allow_list()
+
+    def __call__(self, command: str) -> str:
+        timeout = 60
+
+        # 空命令直接拒绝
+        if not command or not command.strip():
+            return "Security check failed: empty command is not allowed"
+
+        normalized = " ".join(command.strip().split()).lower()
+
+        # 判定是否在只读白名单内（前缀匹配，兼容带参数情况）
+        is_read_only = any(
+            normalized == item or normalized.startswith(item + " ")
+            for item in self.read_only_whitelist
+        )
+
+        # 判定是否在动态 allow list 内（前缀匹配），如 "javac" 匹配所有 "javac ..." 命令
+        is_in_allow_list = any(
+            normalized == item or normalized.startswith(item + " ")
+            for item in self.dynamic_allowlist
+        )
+
+        # 白名单 + allow list 内命令：直接执行，仅做一个浅色提示
+        if is_read_only or is_in_allow_list:
+            RESET = "\033[0m"
+            DARK_GRAY = "\033[90m"
+            print(f"{DARK_GRAY}Running Command (no extra confirmation):{DARK_GRAY}\n{RESET}{command}")
+        else:
+            # 需要用户确认：y=仅执行一次，Y=执行并将前缀添加到 allow list
+            confirmed, add_prefix = self._confirm_with_user(command)
+            if not confirmed:
+                return f"Execution cancelled by user.\nCommand: {command}"
+            if add_prefix:
+                self._add_to_allow_list(command)
+
         try:
-            print(f"Running Command: {command}")
 
             result = subprocess.run(
                 command,
@@ -173,163 +189,101 @@ class execute_command(Tool_):
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                cwd=os.getcwd()
+                cwd=os.getcwd(),
             )
-            
+
             # 构建返回信息
             output_lines = []
             output_lines.append(f"Command completed (return code: {result.returncode})")
             output_lines.append(f"Command: {command}")
-            
+
             if result.stdout:
                 output_lines.append("\n--- command output ---")
                 output_lines.append(result.stdout.strip())
-            
+
             if result.stderr:
                 output_lines.append("\n--- command error ---")
                 output_lines.append(result.stderr.strip())
-            
+
             # If command failed
             if result.returncode != 0:
                 output_lines.insert(0, f"Command failed (exit code: {result.returncode})")
-            
+
             return "\n".join(output_lines)
-            
+
         except subprocess.TimeoutExpired:
             return f"❌ Command timed out (>{timeout}s)\nCommand: {command}"
-        
+
         except Exception as e:
             return f"❌ Command execution error: {str(e)}\nCommand: {command}"
     
         
         
-    def _is_safe_command(self, command: str) -> Tuple[bool, str]:
+    def _confirm_with_user(self, command: str) -> Tuple[bool, bool]:
+        """在控制台显式询问用户许可
+
+        返回 (是否允许运行, 是否将前缀命令加入 allow list)
+        小写 y: 只允许运行本次，不加入列表；
+        大写 Y: 允许运行，并将前缀命令加入 allow_cmd_list.json。
         """
-        检查命令是否安全
-        
-            command: 要执行的命令字符串
-            
-        Returns:
-            (是否安全, 原因说明)
-        """
-        command_lower = command.lower().strip()
-        
-        # 检查空命令
-        if not command_lower:
-            return False, "empty command"
-        
-        # 检查命令链
-        if any(sep in command for sep in ["&&", "||", ";", "|"]):
-            return False, "Command chaining or piping is not allowed; execute commands separately"
-        
-        # 提取主命令
-        parts = command_lower.split()
-        if not parts:
-            return False, "invalid command"
-        
-        main_cmd = parts[0]
-        
-        # 高危命令直接禁止
-        if any(bad in command_lower.split() for bad in self.danger_forbidden):
-            return False, "contains forbidden high-risk command"
-        
-        # 检查主命令是否在白名单
-        if main_cmd not in self.safe_commands:
-            return False, f"Command '{main_cmd}' is not in the safe whitelist"
-        
-        # 禁止启动交互式 REPL（无参数）
-        if main_cmd in ["python", "python3", "node"] and len(parts) == 1:
-            return False, f"Starting interactive {main_cmd} session is not allowed"
-        
-        return True, "Command passed security check"
-
-    def _needs_user_consent(self, command: str, parts: list, main_cmd: str) -> Tuple[bool, str]:
-        """
-        判断命令是否需要用户许可（可能修改文件/仓库/环境）
-        """
-        cl = command.lower()
-
-        # 文件重定向写入（覆盖或追加）都视为修改
-        if ">>" in cl or ">" in cl:
-            return True, "Contains output redirection; may write/overwrite files"
-
-        # 文件/目录操作：一律视为修改
-        file_write_cmds = {
-            "copy", "cp", "xcopy", "robocopy",
-            "move", "mv", "rename", "ren",
-            "mkdir", "md", "rmdir", "rd",
-            "del", "rm",
-        }
-        if main_cmd in file_write_cmds:
-            why = {
-                "copy": "file copy/overwrite", "cp": "file copy/overwrite", "xcopy": "file copy/overwrite", "robocopy": "file copy/overwrite",
-                "move": "move/rename", "mv": "move/rename", "rename": "move/rename", "ren": "move/rename",
-                "mkdir": "create directory", "md": "create directory",
-                "rmdir": "delete directory", "rd": "delete directory",
-                "del": "delete file", "rm": "delete file",
-            }.get(main_cmd, "filesystem modification")
-            return True, f"{why}"
-
-        # Git：读写分流
-        if main_cmd == "git":
-            action = parts[1] if len(parts) > 1 else ""
-            read_only = {
-                "status", "log", "diff", "branch", "remote", "config",
-                "show", "rev-parse", "ls-files", "describe", "blame",
-            }
-            if action in read_only:
-                return False, "Git read-only operation"
-            # Other git actions are assumed to modify
-            return True, f"Git '{action}' may modify the workspace/repository"
-
-        # 包管理器：安装/卸载/更新/发布等需要许可
-        if main_cmd in {"pip", "pip3", "poetry", "conda"}:
-            action = parts[1] if len(parts) > 1 else ""
-            read_only = {"list", "show", "freeze", "check", "info", "search"}
-            if action in read_only:
-                return False, "Package manager read-only query"
-            return True, f"{main_cmd} '{action or 'command'}' may modify the environment"
-
-        if main_cmd in {"npm", "yarn", "pnpm"}:
-            action = parts[1] if len(parts) > 1 else ""
-            read_only = {"list", "ls", "outdated", "audit", "view", "info"}
-            if action in read_only:
-                return False, "Package manager read-only query"
-            return True, f"{main_cmd} '{action or 'command'}' may modify environment/dependencies"
-
-        # 运行脚本：默认需要许可（无法静态判断是否写入）
-        if main_cmd in {"python", "python3", "node"}:
-            return True, "Running scripts may modify environment or files"
-
-        # 其他常见只读查询命令
-        read_only_cmds = {
-            "which", "where", "echo", "ps", "tasklist", "netstat",
-            "systeminfo", "hostname", "whoami", "dir", "ls", "type", "cat",
-            "findstr", "grep", "tree",
-        }
-        if main_cmd in read_only_cmds:
-            return False, "read-only query command"
-
-        # Default conservative: require consent
-        return True, "Unable to determine safety; user confirmation required"
-
-    def _confirm_with_user(self, command: str, reason: str) -> bool:
-        """
-        在控制台显式询问用户许可
-        """
-        print("About to execute a command that may modify system/files/repository:")
-        print(f"- Reason: {reason}")
-        print(f"- Working directory: {os.getcwd()}")
-        print(f"- Command: {command}")
         try:
-            resp = input("Confirm execution? Type 'yes' to continue (any other key cancels):").strip().lower()
-            return resp == "yes"
+            RESET = "\033[0m"
+            DARK_GRAY = "\033[90m"
+            resp = input(
+                f"{DARK_GRAY}Allow executing command? [y/n] (Y to remember cmd prefix){RESET}\n"
+                f"{command}\n> "
+            ).strip()
+            if resp == "y":
+                return True, False
+            if resp == "Y":
+                return True, True
+            return False, False
         except Exception:
-            return False
+            return False, False
+
+    def _extract_prefix(self, command: str) -> str:
+        """提取用于 allow list 的前缀命令
+
+        当前实现：取命令行的第一个 token（主命令），例如：
+        - "javac Main.java" -> "javac"
+        - "python script.py" -> "python"
+        后续如需更细粒度（例如 "python my_safe_script.py"），可在此扩展。"""
+        parts = command.strip().split()
+        return parts[0].lower() if parts else ""
+
+    def _load_allow_list(self):
+        """从 allow_cmd_list.json 加载动态允许列表，不存在则返回空集合"""
+        try:
+            if os.path.exists(self.allow_list_path):
+                with open(self.allow_list_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                # 统一转为小写字符串集合
+                return set(str(item).strip().lower() for item in data if str(item).strip())
+        except Exception:
+            pass
+        return set()
+
+    def _save_allow_list(self):
+        """将当前 dynamic_allowlist 保存到 allow_cmd_list.json"""
+        try:
+            with open(self.allow_list_path, "w", encoding="utf-8") as f:
+                json.dump(sorted(self.dynamic_allowlist), f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[execute_command] Failed to save allow_cmd_list.json: {e}")
+
+    def _add_to_allow_list(self, command: str):
+        """将命令前缀添加到 allow list 并持久化到 allow_cmd_list.json"""
+        prefix = self._extract_prefix(command)
+        if not prefix:
+            return
+        if prefix in self.dynamic_allowlist:
+            return
+        self.dynamic_allowlist.add(prefix)
+        self._save_allow_list()
     
     
     
     
 if __name__ == "__main__":
-    command_line = "pip freeze > docs/requirements.txt"
+    command_line = "java test"
     print(execute_command()(command_line))

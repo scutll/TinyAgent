@@ -317,46 +317,27 @@ extract_info_from_docx_table_prompt = """
 execute_command_prompt = """
 {
   "name": "execute_command",
-  "description": "Run a single shell command from a curated allowlist. Read-only commands run immediately; commands that modify files/envs trigger an in-terminal confirmation step.",
+  "description": "Run a single shell command. It makes sure safely running, you can safely run those less dangerous command-line commands (with the exception of `rm` and similar ones). ",
   "parameters": {
     "type": "object",
     "properties": {
       "command": {
         "type": "string",
-        "description": "Command without chaining or piping (no &&, ||, ;, |)."
+        "description": "A single shell command. Avoid chaining/piping (no &&, ||, ;, |). And avoid commands that might need user input"
       }
     },
     "required": ["command"]
   },
   "returns": "Combined stdout/stderr plus the exit code.",
-  "policy": {
-    "read_only": [
-      "Filesystem queries: dir/ls/tree/type/cat/findstr/grep/which/where/echo",
-      "System info: hostname/whoami/systeminfo/tasklist/ps/netstat",
-      "Package managers (list/show/freeze/search/outdated) for pip/conda/npm/yarn/pnpm",
-      "Git read-only: status/log/diff/branch/remote/show/rev-parse/ls-files/describe/blame"
-    ],
-    "needs_confirmation": [
-      "File edits: copy/move/rename/mkdir/rmdir/del/rm",
-      "Redirections using > or >>",
-      "Script execution: python/node <script>",
-      "Package installs/updates/removals",
-      "Git mutations: add/commit/push/pull/merge/rebase/checkout/clone"
-    ],
-    "forbidden": [
-      "Command chains or pipes (&&, ||, ;, |)",
-      "Privilege or system operations: sudo/su/shutdown/reboot/poweroff/format/diskpart"
-    ]
-  },
   "safety_notes": [
-    "Explain in `think` why the command is required and what risk mitigation you applied.",
-    "Prefer investigative commands before making changes.",
-    "Avoid commands that launch interactive REPLs."
+    "Explain in `response` why this command is needed and whether it might modify files, the repository, or the environment.",
+    "Prefer read-only/investigative commands before making changes.",
+    "Avoid commands that launch long‑running or interactive REPLs (e.g., bare python/node).",
   ],
   "usage_notes": [
-    "Split multi-step workflows into separate calls.",
-    "Summarize the command's purpose in `response` so the user knows what to expect.",
-    "Inspect stderr if the command fails and adjust accordingly."
+    "Use one shell command per call (no pipelines/chains).",
+    "Summarize the command's purpose and potential risk in `response` so the user knows what will happen.",
+    "Inspect stderr if the command fails and adjust the next command accordingly."
   ]
 }
 """

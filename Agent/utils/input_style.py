@@ -1,11 +1,11 @@
 RESET = "\033[0m"
-LIGHT_GRAY = "\033[90m"
+DARK_GRAY = "\033[90m"
 VISIBLE_PROMPT = "Simply state your need for codeM:"
 import msvcrt
 
 
 def _read_user_input() -> str:
-    display_prompt = f"{LIGHT_GRAY}{VISIBLE_PROMPT}{RESET} "
+    display_prompt = f"{DARK_GRAY}{VISIBLE_PROMPT}{RESET} "
     print(display_prompt, end="", flush=True)
     buffer = []
     prompt_cleared = False
