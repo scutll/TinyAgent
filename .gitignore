@@ -428,3 +428,5 @@ gydl/
 Agent/prompts/tools_db
 Agent/history/*
 Agent/allow_cmd_list.json
+old_docs/*
+tmp/*

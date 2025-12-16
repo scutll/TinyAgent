@@ -213,7 +213,11 @@ def main():
             while True:
                 try: 
                     # userInput = _read_user_input()
-                    userInput = input(">")
+                    while True:
+                        userInput = input(">")
+                        if userInput != "\n" and userInput != "":
+                            break
+                    agent.upload_files()
                     agent.set_input(userInput)
                     agent.run(CURRENT_DIALOG_)
                     
