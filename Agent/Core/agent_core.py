@@ -4,7 +4,7 @@
 
 from pathlib import Path
 import shutil
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
 RED = "\033[31m"
 GREEN = "\033[32m"
@@ -142,24 +142,27 @@ class AgentCore:
         
         
 
-    def upload_files(self) -> None:
-        project_root = Path(__file__).resolve().parents[2]
-        tmp_dir = project_root / "tmp"
+    def _relativize(self, file_path: Path, rel_base: Optional[Path]) -> str:
+        if rel_base is None:
+            return file_path.name
+        try:
+            return str(file_path.relative_to(rel_base))
+        except ValueError:
+            return file_path.name
+
+    def _process_file_paths(
+        self,
+        file_paths: Iterable[Path],
+        rel_base: Optional[Path] = None,
+    ) -> List[Path]:
         aggregated: List[Dict[str, Any]] = []
-
-        if not tmp_dir.exists():
-            log(f"[upload_files] tmp dir not found: {tmp_dir}")
-            self.files = []
-            return
-
-        file_paths = sorted(p for p in tmp_dir.rglob("*") if p.is_file())
-        if not file_paths:
-            self.files = []
-            return
-
-        processed_files: List[Path] = []
+        processed: List[Path] = []
 
         for file_path in file_paths:
+            if not file_path.exists() or not file_path.is_file():
+                log(f"[upload_files] skip missing entry: {file_path}")
+                continue
+
             parser = self._select_parser(file_path.suffix.lower())
             if parser is None:
                 log(f"[upload_files] unsupported file type skipped: {file_path.name}")
@@ -181,16 +184,61 @@ class AgentCore:
                 log(f"[upload_files] no content extracted from {file_path}")
                 continue
 
-            rel_name = file_path.relative_to(tmp_dir)
+            rel_name = self._relativize(file_path, rel_base)
             aggregated.append({"type": "text", "text": f"[File: {rel_name}]"})
             aggregated.extend(content)
-
-            # 记录为已处理，稍后批量移动
-            processed_files.append(file_path)
+            processed.append(file_path)
 
         self.files = aggregated
+        return processed
 
-        # 所有文件解析完成后统一移动已处理文件到 old_docs（保留相对路径）
+    def upload_local_files(
+        self,
+        selected_paths: Sequence[Union[str, Path]],
+        base_dir: Optional[Union[str, Path]] = None,
+    ) -> None:
+        if not selected_paths:
+            self.files = []
+            return
+
+        normalized: List[Path] = []
+        for raw in selected_paths:
+            path_obj = Path(raw).expanduser()
+            try:
+                normalized.append(path_obj.resolve())
+            except FileNotFoundError:
+                log(f"[upload_files] unable to resolve path: {raw}")
+
+        rel_base = None
+        if base_dir is not None:
+            rel_base = Path(base_dir).expanduser()
+            try:
+                rel_base = rel_base.resolve()
+            except FileNotFoundError:
+                rel_base = rel_base
+
+        processed = self._process_file_paths(normalized, rel_base)
+        if processed:
+            log(f"[upload_files] prepared {len(processed)} files from manual selection")
+        else:
+            log("[upload_files] no files prepared from manual selection")
+
+    def upload_files(self) -> None:
+        project_root = Path(__file__).resolve().parents[2]
+        tmp_dir = project_root / "tmp"
+
+        if not tmp_dir.exists():
+            log(f"[upload_files] tmp dir not found: {tmp_dir}")
+            self.files = []
+            return
+
+        file_paths = sorted(p for p in tmp_dir.rglob("*") if p.is_file())
+        if not file_paths:
+            self.files = []
+            return
+
+        processed_files = self._process_file_paths(file_paths, tmp_dir)
+
         log("successfully processed file: " + " ".join(str(file) for file in file_paths))
         old_docs = project_root / "old_docs"
         for src in processed_files:
