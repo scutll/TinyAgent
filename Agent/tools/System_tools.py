@@ -3,12 +3,11 @@ from pathlib import Path
 import os
 import time
 import shutil
-import subprocess
-import os
 import json
 from typing import Tuple, Optional
 from Agent.tools.Tools import Tool_
 from Agent.prompts.tools_prompt import tree_file_prompt, delete_dir_prompt, delete_file_prompt, get_absolute_cur_path_prompt, execute_command_prompt
+from Agent.utils.terminal.manager import TerminalSessionManager
 
 class tree_file(Tool_):
     def __init__(self):
@@ -146,9 +145,18 @@ class execute_command(Tool_):
         # 运行时允许直接执行的命令前缀（可通过用户选择动态添加），例如 "javac"、"python my_safe_script.py" 等
         self.allow_list_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "allow_cmd_list.json")
         self.dynamic_allowlist = self._load_allow_list()
+        # 长生命周期 shell session 管理，用于支持需要持续交互的命令
+        self.session_manager = TerminalSessionManager()
 
-    def __call__(self, command: str) -> str:
-        timeout = 60
+    def __call__(
+        self,
+        command: str,
+    ) -> str:
+        """执行命令（对外只暴露一个 command 参数）
+
+        - 外部：Agent 只需要提供一行命令字符串；可以多次调用本工具，像人在同一个终端里一行一行输入一样，从而实现交互式会话。
+        - 内部：通过 TerminalSessionManager 维护一个长生命周期的 shell session（默认 id="default"），并在每次调用时写入命令并等待输出稳定后返回。
+        """
 
         # 空命令直接拒绝
         if not command or not command.strip():
@@ -183,36 +191,28 @@ class execute_command(Tool_):
 
         try:
 
-            result = subprocess.run(
-                command,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                cwd=os.getcwd(),
+            # 这里固定使用一个内部 session_id（"default"），对 Agent 层完全透明。
+            session_result = self.session_manager.send_command(
+                session_id="default",
+                command=command,
             )
 
-            # 构建返回信息
+            stdout_block = session_result.get("stdout", "").strip()
+            stderr_block = session_result.get("stderr", "").strip()
+
             output_lines = []
-            output_lines.append(f"Command completed (return code: {result.returncode})")
+            output_lines.append("Command completed")
             output_lines.append(f"Command: {command}")
 
-            if result.stdout:
+            if stdout_block:
                 output_lines.append("\n--- command output ---")
-                output_lines.append(result.stdout.strip())
+                output_lines.append(stdout_block)
 
-            if result.stderr:
+            if stderr_block:
                 output_lines.append("\n--- command error ---")
-                output_lines.append(result.stderr.strip())
-
-            # If command failed
-            if result.returncode != 0:
-                output_lines.insert(0, f"Command failed (exit code: {result.returncode})")
+                output_lines.append(stderr_block)
 
             return "\n".join(output_lines)
-
-        except subprocess.TimeoutExpired:
-            return f"❌ Command timed out (>{timeout}s)\nCommand: {command}"
 
         except Exception as e:
             return f"❌ Command execution error: {str(e)}\nCommand: {command}"

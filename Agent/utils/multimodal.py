@@ -1,5 +1,10 @@
 import base64
 from io import BytesIO
+import io
+from pptx import Presentation
+from PIL import Image
+import json
+from Agent.utils.img_filter import is_useful_image 
 import os
 from typing import Dict, List
 from docx import Document
@@ -212,32 +217,100 @@ def parse_text_file(path) -> Dict:
         "success": True,
         "content": [result]
     }
+
+
+def parse_ppt_file(path) ->Dict:
+    """
+    读取PPT文件，按顺序提取文本与图片，返回结构化内容。
+    图片将以 base64 形式返回，适合直接送入多模态模型。
+    """
     
+    if not os.path.exists(path):
+        return {
+            "success": False,
+            "content": f"File not found: {path}"
+        }
+        
+        
+    
+    prs = Presentation(path)
+    contents = []
+    text_id = 0
+
+    for slide in prs.slides:
+        for shape in slide.shapes:
+
+            # ---------- 文本 ----------
+            if hasattr(shape, "text") and shape.text.strip():
+                text_obj = {
+                    "para_id": text_id,
+                    "content": shape.text.strip()
+                }
+                text_id += 1
+
+                contents.append({
+                    "type": "text",
+                    "text": json.dumps(text_obj, ensure_ascii=False)
+                })
+
+            # ---------- 图片 ----------
+            if shape.shape_type == 13:  # PICTURE
+                try:
+                    image = shape.image
+                    image_bytes = image.blob
+                    pil_img = Image.open(io.BytesIO(image_bytes))
+
+                    is_bg = "background" in shape.name.lower()
+
+                    if not is_useful_image(
+                        pil_img,
+                        image_bytes,
+                        is_background=is_bg
+                    ):
+                        continue
+
+                    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+                    image_url = f"data:image/{image.ext};base64,{image_base64}"
+
+                    contents.append({
+                        "type": "image_url",
+                        "image_url": {"url": image_url}
+                    })
+
+                except Exception:
+                    continue
+    
+    return {
+        "success": True,
+        "content": contents
+    }
 
 
 if __name__ == "__main__": 
     import Agent.Memory.container as ct
     memory = ct.MemoryContainer()
     
-    item = parse_text_file("docs/test.py")
-    print("item parsed!")
-    if item["success"]:
-        item = item['content']
-    else:
-        print("boom")
-        exit()
-    memory._add_user_message(item)
-    from openai import OpenAI
-    client = OpenAI(
-        api_key="",
-    )
-    completion = client.chat.completions.create(
-        model='gpt-4.1',
-        messages=memory(),
-        stream=False,
-    )
+    # item = parse_text_file("docs/test.py")
+    # print("item parsed!")
+    # if item["success"]:
+    #     item = item['content']
+    # else:
+    #     print("boom")
+    #     exit()
+    # memory._add_user_message(item)
+    # from openai import OpenAI
+    # client = OpenAI(
+    #     api_key="",
+    # )
+    # completion = client.chat.completions.create(
+    #     model='gpt-4.1',
+    #     messages=memory(),
+    #     stream=False,
+    # )
     
-    # with(open("docs/test.txt", 'w')) as F:
-    #     F.write(str(item))
-    result = str(completion.choices[0].message.content)
-    print(result)
+    # # with(open("docs/test.txt", 'w')) as F:
+    # #     F.write(str(item))
+    # result = str(completion.choices[0].message.content)
+    # print(result)
+    result = parse_ppt_file("E:\D2L\Agent\TinyAgent\old_docs\议题1初稿.pptx")['content']
+    # print(result)    

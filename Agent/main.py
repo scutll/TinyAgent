@@ -223,30 +223,32 @@ def _interactive_file_selection(base_dir: Path) -> List[Path]:
     current_dir = base_dir
     selected: List[Path] = []
     selected_set: Set[Path] = set()
-
+    print_files_list = True
     while True:
-        print("-" * 48)
-        print(f"当前目录: {current_dir}")
-        try:
-            entries = sorted(current_dir.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
-        except PermissionError:
-            print("没有权限访问该目录，已返回上级。\n")
-            if current_dir == base_dir:
+        if print_files_list:
+            print("-" * 48)
+            print(f"当前目录: {current_dir}")
+            try:
+                entries = sorted(current_dir.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+            except PermissionError:
+                print("没有权限访问该目录，已返回上级。\n")
+                if current_dir == base_dir:
+                    continue
+                current_dir = current_dir.parent
                 continue
-            current_dir = current_dir.parent
-            continue
 
-        if not entries:
-            print("(目录为空)")
+            if not entries:
+                print("(目录为空)")
 
-        for idx, entry in enumerate(entries, start=1):
-            marker = f"{RED}[DIR]{RESET}" if entry.is_dir() else f"{GREEN}[FILE]{RESET}"
-            print(f"{idx}. {marker} {entry.name}")
+            for idx, entry in enumerate(entries, start=1):
+                marker = f"{RED}[DIR]{RESET}" if entry.is_dir() else f"{GREEN}[FILE]{RESET}"
+                print(f"{idx}. {marker} {entry.name}")
 
-        select_all_idx = len(entries) + 1
-        print(f"{select_all_idx}. 添加当前目录")
-        print("b. 返回上一级    v. 查看已选    d. 完成    q. 取消")
+            select_all_idx = len(entries) + 1
+            print(f"{select_all_idx}. 添加当前目录")
+            print("b. 返回上一级    v. 查看已选    d. 完成    q. 取消")
 
+        print_files_list = True
         choice_raw = _safe_input("选择序号: ")
         if choice_raw is None:
             print("已取消文件选择。\n")
@@ -316,11 +318,13 @@ def _interactive_file_selection(base_dir: Path) -> List[Path]:
                 continue
             resolved = entry.resolve()
             if resolved in selected_set:
-                print("该文件已在上传列表中。\n")
+                print("该文件已在上传列表中。")
+                print_files_list = False
                 continue
             selected.append(resolved)
             selected_set.add(resolved)
-            print(f"已添加文件: {_format_relative_path(resolved, base_dir)}\n")
+            print(f"已添加文件: {_format_relative_path(resolved, base_dir)}")
+            print_files_list = False
             continue
 
         if idx == select_all_idx:
@@ -333,7 +337,8 @@ def _interactive_file_selection(base_dir: Path) -> List[Path]:
                 selected.append(resolved)
                 selected_set.add(resolved)
                 added += 1
-            print(f"已添加 {added} 个文件。\n")
+            print(f"已添加 {added} 个文件.")
+            print_files_list = False
             continue
 
         print("编号超出范围。\n")

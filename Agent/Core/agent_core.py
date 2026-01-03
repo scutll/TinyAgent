@@ -27,6 +27,7 @@ from Agent.utils.multimodal import (
     parse_pdf_file,
     parse_text_file,
     parse_word_file,
+    parse_ppt_file
 )
 
 
@@ -48,21 +49,9 @@ tools.load_tool(Tools)
 docs_with_imgs = False  # 当read_word_document读取的内容有image时设为true，这时禁止使用structured output
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
-WORD_EXTS = {".doc", ".docx"}
+WORD_EXTS = {".docx"}
 PDF_EXTS = {".pdf"}
-TEXT_EXTS = {
-    ".txt",
-    ".md",
-    ".py",
-    ".json",
-    ".yaml",
-    ".yml",
-    ".csv",
-    ".log",
-    ".xml",
-    ".html",
-    ".htm",
-}
+PPT_EXTS = {".ppt", ".pptx"}
 
 def set_doc_with_imgs():
     global docs_with_imgs
@@ -171,8 +160,9 @@ class AgentCore:
             try:
                 result = parser(str(file_path))
             except Exception as exc:
-                log(f"[upload_files] failed to parse {file_path}: {exc}")
+                log(f"[upload_files] failed to parse file {file_path}\nERROR:{exc}")
                 continue
+
 
             if not result.get("success"):
                 err_msg = result.get("message") or result.get("content")
@@ -258,9 +248,9 @@ class AgentCore:
             return parse_pdf_file
         if suffix in WORD_EXTS:
             return parse_word_file
-        if suffix in TEXT_EXTS or suffix == "":
-            return parse_text_file
-        return None
+        if suffix in PPT_EXTS:
+            return parse_ppt_file
+        return parse_text_file
 
     def _compose_input_payload(self) -> Union[str, List[Dict]]:
         if len(self.files):

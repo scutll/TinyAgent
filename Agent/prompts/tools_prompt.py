@@ -317,25 +317,28 @@ extract_info_from_docx_table_prompt = """
 execute_command_prompt = """
 {
   "name": "execute_command",
-  "description": "Run a single shell command. It makes sure safely running, you can safely run those less dangerous command-line commands (with the exception of `rm` and similar ones). ",
+  "description": "Run a shell command through a managed terminal. Supports both one-shot commands and interactive programs; the tool will keep an internal session so you can call it multiple times in a row to continue the interaction.",
   "parameters": {
     "type": "object",
     "properties": {
       "command": {
         "type": "string",
-        "description": "A single shell command. Avoid chaining/piping (no &&, ||, ;, |). And avoid commands that might need user input"
+        "description": "A single shell command (one line you would normally type then press Enter). Avoid chaining/piping (no &&, ||, ;, |)."
       }
     },
     "required": ["command"]
   },
-  "returns": "Combined stdout/stderr plus the exit code.",
+  "returns": "Combined stdout/stderr produced during this call, plus basic status.",
   "safety_notes": [
     "Explain in `response` why this command is needed and whether it might modify files, the repository, or the environment.",
     "Prefer read-only/investigative commands before making changes.",
-    "Avoid commands that launch long‑running or interactive REPLs (e.g., bare python/node).",
+    "For destructive or high-risk commands (e.g., deleting files, formatting disks, killing important processes, heavy network operations), clearly describe the risk and purpose so the user can make an informed choice.",
+    "Long-running or interactive programs are allowed, but always drive them step-by-step (one command per call) instead of starting uncontrolled background tasks."
   ],
   "usage_notes": [
-    "Use one shell command per call (no pipelines/chains).",
+    "Use one logical shell line per call (no pipelines/chains).",
+    "For interactive flows: first start the program (for example, `python -i -u`) with one call, then send subsequent inputs as new calls to `execute_command`.",
+    "Treat each call as if a human typed a single line and pressed Enter, then waited for the output to stabilize.",
     "Summarize the command's purpose and potential risk in `response` so the user knows what will happen.",
     "Inspect stderr if the command fails and adjust the next command accordingly."
   ]
