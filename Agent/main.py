@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 from Agent.Core.agent_core import AgentCore
 from typing import Any, List, Optional, Set
+from Agent.utils.conv_name.conv_naming import auto_name_conv_if_needed
 
 from Agent.utils.input_style import _read_user_input
 from Agent.utils.config import (
@@ -20,6 +21,7 @@ import argparse
 
 RED = "\033[31m"
 GREEN = "\033[32m"
+BLUE = "\033[34m"
 RESET = "\033[0m"
 
 
@@ -246,7 +248,7 @@ def _interactive_file_selection(base_dir: Path) -> List[Path]:
 
             select_all_idx = len(entries) + 1
             print(f"{select_all_idx}. 添加当前目录")
-            print("b. 返回上一级    v. 查看已选    d. 完成    q. 取消")
+            print("b. 返回上一级    d. 完成    q. 取消")
 
         print_files_list = True
         choice_raw = _safe_input("选择序号: ")
@@ -260,88 +262,86 @@ def _interactive_file_selection(base_dir: Path) -> List[Path]:
             else:
                 current_dir = current_dir.parent
             continue
-        if choice.lower() == "v":
-            if not selected:
-                print("当前未选择任何文件。\n")
-                continue
-
-            print("已选择文件：")
-            for idx, file_path in enumerate(selected, start=1):
-                rel_path = _format_relative_path(file_path, base_dir)
-                print(f" {idx}. {rel_path}")
-
-            remove_choice_raw = _safe_input("输入要删除的序号，可用空格或逗号分隔（回车跳过）: ")
-            if remove_choice_raw is None:
-                print("已取消删除操作。\n")
-                continue
-
-            remove_choice = remove_choice_raw.strip()
-            if not remove_choice:
-                continue
-
-            tokens = remove_choice.replace(",", " ").split()
-            to_remove: Set[int] = set()
-            for token in tokens:
-                if token.isdigit():
-                    idx_val = int(token)
-                    if 1 <= idx_val <= len(selected):
-                        to_remove.add(idx_val)
-                    else:
-                        print(f"序号 {token} 超出范围，已忽略。")
-                else:
-                    print(f"'{token}' 不是有效序号，已忽略。")
-
-            if not to_remove:
-                continue
-
-            removed = 0
-            for idx_val in sorted(to_remove, reverse=True):
-                removed_path = selected.pop(idx_val - 1)
-                selected_set.discard(removed_path)
-                removed += 1
-            print(f"已移除 {removed} 个文件。\n")
-            continue
+        
         if choice.lower() == "d":
             return selected
         if choice.lower() == "q":
             return []
 
-        if not choice.isdigit():
+        # 支持用空格或逗号分隔多个序号
+        tokens = choice.replace(",", " ").split()
+        if not tokens:
             print("无效输入，请重新选择。\n")
             continue
 
-        idx = int(choice)
-        if 1 <= idx <= len(entries):
-            entry = entries[idx - 1]
-            if entry.is_dir():
-                current_dir = entry
-                continue
-            resolved = entry.resolve()
-            if resolved in selected_set:
-                print("该文件已在上传列表中。")
-                print_files_list = False
-                continue
-            selected.append(resolved)
-            selected_set.add(resolved)
-            print(f"已添加文件: {_format_relative_path(resolved, base_dir)}")
-            print_files_list = False
+        if not all(tok.isdigit() for tok in tokens):
+            print("无效输入，请输入数字序号或命令。\n")
             continue
 
-        if idx == select_all_idx:
-            all_files = _collect_all_files(current_dir)
-            added = 0
-            for file_path in all_files:
-                resolved = file_path.resolve()
+        indexes = [int(tok) for tok in tokens]
+
+        # 单个序号维持原有行为（可进入目录、选择目录全部等）
+        if len(indexes) == 1:
+            idx = indexes[0]
+
+            if 1 <= idx <= len(entries):
+                entry = entries[idx - 1]
+                if entry.is_dir():
+                    current_dir = entry
+                    continue
+                resolved = entry.resolve()
                 if resolved in selected_set:
+                    print("该文件已在上传列表中。")
+                    print_files_list = False
                     continue
                 selected.append(resolved)
                 selected_set.add(resolved)
-                added += 1
-            print(f"已添加 {added} 个文件.")
-            print_files_list = False
+                print(f"已添加文件: {GREEN}{_format_relative_path(resolved, base_dir)}{RESET}")
+                print_files_list = False
+                continue
+
+            if idx == select_all_idx:
+                all_files = _collect_all_files(current_dir)
+                added = 0
+                for file_path in all_files:
+                    resolved = file_path.resolve()
+                    if resolved in selected_set:
+                        continue
+                    selected.append(resolved)
+                    selected_set.add(resolved)
+                    added += 1
+                print(f"已添加 {added} 个文件.")
+                print_files_list = False
+                continue
+
+            print("编号超出范围。\n")
             continue
 
-        print("编号超出范围。\n")
+        # 多个序号：一次性添加多个文件，仅允许文件，不支持目录和“添加当前目录”选项
+        added_multi = 0
+        for idx in indexes:
+            if idx == select_all_idx:
+                print(f"序号 {idx} 为'添加当前目录'选项，不能与其他序号一起使用，已忽略。")
+                continue
+            if not (1 <= idx <= len(entries)):
+                print(f"序号 {idx} 超出范围，已忽略。")
+                continue
+            entry = entries[idx - 1]
+            if entry.is_dir():
+                print(f"序号 {idx} 对应的是目录，暂不支持一次选择多个目录，已忽略。")
+                continue
+            resolved = entry.resolve()
+            if resolved in selected_set:
+                continue
+            selected.append(resolved)
+            selected_set.add(resolved)
+            added_multi += 1
+
+        if added_multi > 0:
+            print(f"已添加 {added_multi} 个文件。")
+            print_files_list = False
+        else:
+            print("没有添加任何新文件。\n")
 
 
 def _handle_file_upload(agent: AgentCore) -> None:
@@ -354,11 +354,136 @@ def _handle_file_upload(agent: AgentCore) -> None:
         return
 
     agent.upload_local_files(selected_files, base_dir)
-    print(f"已准备 {len(selected_files)} 个文件，将在下一次对话时发送。\n")
+    # 统计真正解析成功并存入 AgentCore 的文件数量
+    uploaded = agent.uploaded_files()
+    if not uploaded:
+        print("所选文件均未成功解析，未准备任何可用文件。\n")
+    else:
+        print(f"已准备 {len(uploaded)} 个文件：")
+        for file_path in uploaded:
+            try:
+                rel_view = _format_relative_path(Path(file_path), base_dir)
+            except Exception:
+                rel_view = file_path
+            print(f"- {GREEN}{rel_view}{RESET}")
+        print("将在下一次对话时发送。\n")
+
+
+def _handle_uploaded_files(agent: AgentCore) -> None:
+    """查看并删除已解析成功、当前准备发送的文件。"""
+    base_dir = Path.cwd().resolve()
+    while True:
+        uploaded = agent.uploaded_files()
+        if not uploaded:
+            print("当前没有已上传成功的文件。")
+            return
+
+        print("\n== 已上传文件列表 ==")
+        for idx, file_path in enumerate(uploaded, start=1):
+            try:
+                rel_view = _format_relative_path(Path(file_path), base_dir)
+            except Exception:
+                rel_view = file_path
+            print(f" {idx}. {BLUE}{rel_view}{RESET}")
+
+        choice_raw = _safe_input("输入要删除的序号，可用空格或逗号分隔（回车返回）: ")
+        if choice_raw is None:
+            print("已取消删除操作，当前上传文件保持不变。\n")
+            return
+        choice = choice_raw.strip()
+        if not choice:
+            # 直接回车表示不再修改
+            print("已退出已上传文件管理。\n")
+            return
+
+        tokens = choice.replace(",", " ").split()
+        to_remove: Set[int] = set()
+        for token in tokens:
+            if token.isdigit():
+                idx_val = int(token)
+                if 1 <= idx_val <= len(uploaded):
+                    to_remove.add(idx_val)
+                else:
+                    print(f"序号 {token} 超出范围，已忽略。")
+            else:
+                print(f"'{token}' 不是有效序号，已忽略。")
+
+        if not to_remove:
+            continue
+
+        # 按序号从大到小删除，避免索引错位
+        for idx_val in sorted(to_remove, reverse=True):
+            path_to_delete = uploaded[idx_val - 1]
+            agent.delete_uploaded_file(path_to_delete)
+
+        print("所选文件已删除。")
+
+
+def chats_manage(agent: AgentCore, current_dialog: str) -> str:
+    """浏览、加载或删除历史聊天记录。返回可能更新的 dialog id。"""
+    history_dir = os.path.join(os.path.dirname(__file__), "history")
+    os.makedirs(history_dir, exist_ok=True)
+
+    files = [f for f in os.listdir(history_dir) if f.endswith(".json") and os.path.isfile(os.path.join(history_dir, f))]
+    if not files:
+        print("no chat saved!")
+        return current_dialog
+
+    files.sort()
+    cache = {idx: os.path.splitext(name)[0] for idx, name in enumerate(files, start=1)}
+
+    print("-" * 32)
+    print("chats:")
+    for idx, stem in cache.items():
+        display = f"{BLUE}{stem}{RESET}" if stem == current_dialog else stem
+        print(f"{idx}. {display}")
+    print("-" * 32)
+
+    action = _safe_input("选择操作: [l] 加载 / [d] 删除 / [回车返回]: ")
+    if action is None or action.strip() == "":
+        return current_dialog
+    action = action.strip().lower()
+
+    if action not in {"l", "d"}:
+        print("无效操作!\n")
+        return current_dialog
+
+    choice_raw = _safe_input("输入序号: ")
+    if choice_raw is None or not choice_raw.strip().isdigit():
+        print("invalid choice!")
+        return current_dialog
+
+    idx = int(choice_raw.strip())
+    if idx not in cache:
+        print("invalid choice!")
+        return current_dialog
+
+    stem = cache[idx]
+    filename = stem + ".json"
+    file_path = os.path.join(history_dir, filename)
+
+    if action == "l":
+        agent.load_conv(filename)
+        print(f"chat switched to {stem}!")
+        return stem
+
+    # delete
+    confirm = _safe_input(f"确认删除 {stem}? [y/N]: ")
+    if confirm and confirm.strip().lower() == "y":
+        try:
+            os.remove(file_path)
+            print(f"{stem} deleted.")
+            # 如果删掉当前会话，则生成新 id
+            if stem == current_dialog:
+                return datetime.now().strftime("%m%d-%H%M")
+        except Exception as exc:
+            print(f"删除失败: {exc}")
+    return current_dialog
 
 
 def _run_chat_session(agent: AgentCore, dialog_id: str) -> str:
     print("输入 ':menu' 返回上一级。按 Ctrl+C 重置会话，Ctrl+Z 退出聊天。")
+    first_round_named = False  # 标记当前会话是否已经尝试自动命名
     while True:
         try:
             user_input = input(">")
@@ -369,10 +494,16 @@ def _run_chat_session(agent: AgentCore, dialog_id: str) -> str:
                 break
             agent.set_input(user_input)
             agent.run(dialog_id)
+
+            # 第一轮完整对话结束后尝试自动命名一次
+            if not first_round_named:
+                dialog_id = auto_name_conv_if_needed(dialog_id)
+                first_round_named = True
         except KeyboardInterrupt:
             agent.reset_conversation__()
             print("A new chat started!")
             dialog_id = datetime.now().strftime("%m%d-%H%M")
+            first_round_named = False
         except EOFError:
             print("\nThanks for using CodeM!")
             break
@@ -393,8 +524,9 @@ def main():
                 print("-" * 32)
                 print("1. 进行对话")
                 print("2. 上传文件")
-                print("3. 返回主菜单")
-                sub_choice = _safe_input("选择操作 [1-3]: ")
+                print("3. 查看/删除已上传文件")
+                print("4. 返回主菜单")
+                sub_choice = _safe_input("选择操作 [1-4]: ")
                 if sub_choice is None:
                     break
                 sub_choice = sub_choice.strip()
@@ -402,41 +534,15 @@ def main():
                     CURRENT_DIALOG_ = _run_chat_session(agent, CURRENT_DIALOG_)
                 elif sub_choice == "2":
                     _handle_file_upload(agent)
-                elif sub_choice in {"3", "", "b", "B"}:
+                elif sub_choice == "3":
+                    _handle_uploaded_files(agent)
+                elif sub_choice in {"4", "", "b", "B"}:
                     break
                 else:
                     print("无效选择!\n")
         
         elif ch == "2":
-            history_dir = os.path.join(os.path.dirname(__file__), "history")
-            os.makedirs(history_dir, exist_ok=True)
-            
-            files = os.listdir(history_dir)
-            if len(files) == 0:
-                print("no chat saved!")
-                continue
-            
-            cnt = 0
-            chat_cache = {}
-            print("-" * 32)
-            print("chats:")
-            for filename in files:
-                file_path = os.path.join(history_dir, filename)
-                if os.path.isfile(file_path):     
-                    name = os.path.splitext(filename)[0]   # 去掉 .json
-                    cnt += 1
-                    print(f"{cnt}. {name}")
-                    chat_cache[cnt] = name
-            print("-" * 32)
-            switch_ = input("switch chat: ")
-            if switch_.isdigit():
-                if int(switch_) <= cnt:
-                    agent.load_conv(chat_cache[int(switch_)] + ".json")
-                    print(f"chat switched to {chat_cache[int(switch_)]}!")
-                    CURRENT_DIALOG_ = chat_cache[int(switch_)]
-                    continue
-                
-            print("invalid switch choice!")
+            CURRENT_DIALOG_ = chats_manage(agent, CURRENT_DIALOG_)
             
         
         elif ch == "3":

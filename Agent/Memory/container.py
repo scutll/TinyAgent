@@ -63,6 +63,14 @@ class MemoryContainer:
         else:
             original_prompt = self.tool_prompt["content"]
             self.tool_prompt = {"role": "system", "content": original_prompt + tool_prompt}
+            
+    def pop_if_user_last(self):
+        if len(self.conversation) and self.conversation[-1]['type'] == "user message":
+            self.conversation.pop()
+            log("Last user message deleted")
+        else:
+            log("Assisstant message in the last, nothing deleted")
+        
         
     def __call__(self) -> List:
         return [self._system_prompt()] + [self._tool_prompt()] + self._get_conversation()

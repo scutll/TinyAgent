@@ -155,7 +155,6 @@ def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer, M
     # 带图片的文本以List形式的参数给到input
     Memory._add_user_message(input)
     global CURRENT_DIALOG_
-    Memory._save_conversation(CURRENT_DIALOG_)
     
     runtime = _runtime_settings()
     doubao_settings = _resolve_model(runtime, "Doubao")
@@ -164,28 +163,37 @@ def get_response_from_Doubao(input: Union[list, str], Memory: MemoryContainer, M
         api_key=doubao_settings["api_key"],
         base_url=doubao_settings["base_url"]
     )
-    log(f"[LLM request][{model_name}]\n{input[:100]}...")
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=Memory(),
-        stream=False,
-    )
-    result = str(completion.choices[0].message.content) # type: ignore
-    log(f"[LLM response][{model_name}]\n{result}")
-    if result:
+    log(f"[LLM requestd][{model_name}]\n")
+
+    error = None
+    try:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=Memory(),
+            stream=False,
+        )
+    except Exception as exc:
+        log(f"failed to generate response:\nERROR: {exc}")
+        error = exc
+        completion = None
+
+    log(f"[LLM responsed][{model_name}]\n")
+
+    if completion:
+        result = str(completion.choices[0].message.content)  # type: ignore
         Memory._add_assistant_message(str(result))
         Memory._save_conversation(CURRENT_DIALOG_)
     else:
-        Memory._pop_message() 
+        Memory.pop_if_user_last()
+        result = f"[generate failed]\n{error}\nPlease try again later!\n"
 
     log("======================================")
-    return result if result is not None else "Failed to generate response!"
+    return result
 
 
 def get_response_from_gpt(input: Union[list, str], Memory: MemoryContainer, Model: Optional[str] = None):
     Memory._add_user_message(input)
     global CURRENT_DIALOG_
-    Memory._save_conversation(CURRENT_DIALOG_)
     
     runtime = _runtime_settings()
     gpt_settings = _resolve_model(runtime, "gpt")
@@ -194,22 +202,30 @@ def get_response_from_gpt(input: Union[list, str], Memory: MemoryContainer, Mode
         api_key=gpt_settings["api_key"],
         base_url=gpt_settings["base_url"] or None,
     )
-    log(f"[LLM request][{model_name}]\n{input[:100]}...")
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=Memory(),
-        stream=False,
-    )
-    result = str(completion.choices[0].message.content) # type: ignore
-    log(f"[LLM response][{model_name}]\n{result}")
-    if result:
+    log(f"[LLM requestd][{model_name}]\n")
+    
+    error = None
+    try:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=Memory(),
+            stream=False,
+        )
+    except Exception as exc:
+        log(f"failed to generate response:\nERROR: {exc}")
+        error = exc
+        completion = None
+    log(f"[LLM responsed][{model_name}]\n")
+    if completion:
+        result = str(completion.choices[0].message.content)
         Memory._add_assistant_message(str(result))
         Memory._save_conversation(CURRENT_DIALOG_)
     else:
-        Memory._pop_message()  
+        Memory.pop_if_user_last()
+        result = f"[generate failed]\nERROR:{error}\nPlease try again later!\n"
 
     log("======================================")
-    return result if result is not None else "Failed to generate response!"
+    return result
 
 class agentOutputFields(BaseModel):
     observation: str = Field(description="简单描述上一轮系统提供的信息，首轮为用户输入的摘要。")
@@ -223,32 +239,40 @@ class agentOutputFields(BaseModel):
 def structured_response(input: Union[list, str], Memory: MemoryContainer, Model: Optional[str] = None):
     Memory._add_user_message(input)
     global CURRENT_DIALOG_
-    Memory._save_conversation(CURRENT_DIALOG_)
+
     runtime = _runtime_settings()
     doubao_settings = _resolve_model(runtime, "structured")
     model_name = Model or doubao_settings["model"]
-    log(f"[structured request][{model_name}]\n{input}")
+    log(f"[LLM requestd][{model_name}]\n")
     client = OpenAI(
         base_url=doubao_settings["base_url"],
         api_key=doubao_settings["api_key"],
         max_retries=3,
-    ) 
-    response = client.responses.parse(
-        model=model_name, 
-        input=Memory(),
-        text_format=agentOutputFields
     )
-    
-    result = response.output_parsed
-    log(f"[structured response][{model_name}]\n{result}")
-    if result:
+
+    error = None
+    try:
+        response = client.responses.parse(
+            model=model_name,
+            input=Memory(),
+            text_format=agentOutputFields,
+        )
+    except Exception as exc:
+        log(f"failed to generate response:\nERROR: {exc}")
+        error = exc
+        response = None
+
+    log(f"[LLM responsed][{model_name}]\n")
+
+    if response is not None:
+        result = response.output_parsed
         Memory._add_assistant_message(str(result))
         Memory._save_conversation(CURRENT_DIALOG_)
     else:
-        # 这个情况下save以后暂时没法删除，除非下次保存覆盖，待完善
-        Memory._pop_message()
-    
-    return result if result is not None else "Failed to generate response!"
+        Memory.pop_if_user_last()
+        result = f"[generation failed]\nERROR:{error}\nPlease try again later!\n"
+
+    return result
 
 api = {
     "Doubao": get_response_from_Doubao,

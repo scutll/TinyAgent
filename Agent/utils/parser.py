@@ -8,6 +8,9 @@ def parse_response(response: Union[str, agentOutputFields])->Tuple[str, str, str
         return response.think, response.response, response.action, response.action_input
     
     else:
+        if "[generate failed]" in response:
+            return "", "", "FalsedGeneration" ,{"error": response.strip("[generate failed]")}
+        
         try:
             ex_response = extract_JSON_block(response)            
             data = json.loads(ex_response)
